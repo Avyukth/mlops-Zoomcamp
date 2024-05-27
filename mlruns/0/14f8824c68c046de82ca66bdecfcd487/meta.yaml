@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/14f8824c68c046de82ca66bdecfcd487/artifacts
+end_time: 1716850349414
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 14f8824c68c046de82ca66bdecfcd487
+run_name: invincible-loon-130
+run_uuid: 14f8824c68c046de82ca66bdecfcd487
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1716850344039
+status: 3
+tags: []
+user_id: amrit

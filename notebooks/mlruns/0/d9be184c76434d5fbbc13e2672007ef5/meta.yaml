@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/amrit/Documents/Projects/DataTalkClub/cohort/mlops-Zoomcamp/notebooks/mlruns/0/d9be184c76434d5fbbc13e2672007ef5/artifacts
+end_time: 1716815034999
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: d9be184c76434d5fbbc13e2672007ef5
+run_name: trusting-bird-342
+run_uuid: d9be184c76434d5fbbc13e2672007ef5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1716815034994
+status: 4
+tags: []
+user_id: amrit

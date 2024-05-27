@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/2643a77894da4f7eb3cb7abef8b9176a/artifacts
+end_time: 1716850839352
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 2643a77894da4f7eb3cb7abef8b9176a
+run_name: learned-fawn-534
+run_uuid: 2643a77894da4f7eb3cb7abef8b9176a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1716850833939
+status: 4
+tags: []
+user_id: amrit

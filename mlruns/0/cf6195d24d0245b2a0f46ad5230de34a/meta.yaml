@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/cf6195d24d0245b2a0f46ad5230de34a/artifacts
+end_time: 1716850286534
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: cf6195d24d0245b2a0f46ad5230de34a
+run_name: unruly-bear-268
+run_uuid: cf6195d24d0245b2a0f46ad5230de34a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1716850286530
+status: 4
+tags: []
+user_id: amrit

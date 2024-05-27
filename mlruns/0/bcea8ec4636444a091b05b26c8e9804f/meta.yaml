@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/bcea8ec4636444a091b05b26c8e9804f/artifacts
+end_time: 1716850558325
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: bcea8ec4636444a091b05b26c8e9804f
+run_name: skillful-cat-514
+run_uuid: bcea8ec4636444a091b05b26c8e9804f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1716850553017
+status: 4
+tags: []
+user_id: amrit
