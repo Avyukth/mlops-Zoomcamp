@@ -5,6 +5,9 @@ import sys
 import pickle
 import pandas as pd
 import os
+import boto3
+import io
+from urllib.parse import urlparse
 
 ENDPOINT_URL = os.getenv('S3_ENDPOINT_URL', None)
 
@@ -18,17 +21,43 @@ def prepare_data(df: pd.DataFrame, categorical) -> pd.DataFrame:
 
     return df
 
-def read_data(filename: str) -> pd.DataFrame:
-    # if ENDPOINT_URL is None:
-    #     options = {}
-    # else:
-    #     options = {
-    #         'client_kwargs': {
-    #             'endpoint_url': ENDPOINT_URL
-    #         }
-    #     }
+# def read_data(filename: str) -> pd.DataFrame:
+#     if ENDPOINT_URL is None:
+#         options = {}
+#     else:
+#         options = {
+#             'client_kwargs': {
+#                 'endpoint_url': ENDPOINT_URL
+#             }
+#         }
 
-    return pd.read_parquet(filename)
+#     return pd.read_parquet(filename)
+
+def read_data(filename: str) -> pd.DataFrame:
+    print(f"Reading data from {filename}")
+    
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=ENDPOINT_URL,
+        aws_access_key_id='test',
+        aws_secret_access_key='test',
+        region_name='us-east-1'
+    )
+    
+    # Parse the S3 URI
+    parts = filename.replace("s3://", "").split("/")
+    bucket_name = parts[0]
+    key = "/".join(parts[1:])
+    
+    print(f"Accessing bucket: {bucket_name}, key: {key}")  # Debugging line
+    
+    try:
+        response = s3_client.get_object(Bucket=bucket_name, Key=key)
+        parquet_data = response['Body'].read()
+        return pd.read_parquet(io.BytesIO(parquet_data))
+    except Exception as e:
+        print(f"Error reading file: {str(e)}")
+        raise
 
 
 def save_data(df: pd.DataFrame, filename: str):
@@ -53,23 +82,28 @@ def save_data(df: pd.DataFrame, filename: str):
 
 
 def get_input_path(year: int, month: int) -> str:
-    input_file = f'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year:04d}-{month:02d}.parquet'
-    return input_file.format(year=year, month=month)
+    default_input_pattern = 'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year:04d}-{month:02d}.parquet'
+    input_pattern = os.getenv('INPUT_FILE_PATTERN', default_input_pattern)
+    input_pattern.format(year=year, month=month)
+    print(f"Input file pattern: {input_pattern.format(year=year, month=month)}")  # Debugging line
+    print("--------------------------------")  # Debugging line
+
+    return input_pattern.format(year=year, month=month)
 
 
 def get_output_path(year: int, month: int) -> str:
-    output_file = f'output/yellow_tripdata_{year:04d}-{month:02d}.parquet'
-
-    return output_file.format(year=year, month=month)
+    default_output_pattern = 's3://nyc-duration/taxi_type=fhv/year={year:04d}/month={month:02d}/predictions.parquet'
+    output_pattern = os.getenv('OUTPUT_FILE_PATTERN', default_output_pattern)
+    return output_pattern.format(year=year, month=month)
 
 
 def main(year: int, month: int):
-    input_file = get_input_path(year, month)
-    output_file = get_output_path(year, month)
+    input_file = f's3://nyc-duration/in/{year:04d}-{month:02d}.parquet'
+    output_file = f's3://nyc-duration/out/{year:04d}-{month:02d}.parquet'
 
     with open('model.bin', 'rb') as f_in:
         dv, lr = pickle.load(f_in)
-    categorical = ['PUlocationID', 'DOlocationID']
+    categorical = ['PULocationID', 'DOLocationID']
 
     df = read_data(input_file)
     df = prepare_data(df, categorical)
