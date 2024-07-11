@@ -9,7 +9,8 @@ from mlxtend.classifier import StackingClassifier
 from sklearn.ensemble import (ExtraTreesClassifier, RandomForestClassifier,
                               VotingClassifier)
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix)
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -18,6 +19,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
+
 from data_process import main as process_data
 
 
@@ -211,10 +213,11 @@ def main(data_dir):
         # Create and log a summary plot
         plt.figure(figsize=(12,8))
         scores = pd.DataFrame({
-            'Model': names * 2,
-            'Score': [model.best_score_ for model in grid_search_results.values()] * 2,
-            'Type': ['CV'] * len(names) + ['Test'] * len(names)
+            'Model': names,
+            'CV Score': [grid_search_results[name].best_score_ for name in names],
+            'Test Score': [evaluate_model(models[names.index(name)], x_train, y_train, x_test, y_test)[1] for name in names]
         })
+        scores = scores.melt(id_vars='Model', var_name='Type', value_name='Score')
         sns.barplot(x='Model', y='Score', hue='Type', data=scores)
         plt.title('Model Performance Comparison')
         plt.xticks(rotation=45)
