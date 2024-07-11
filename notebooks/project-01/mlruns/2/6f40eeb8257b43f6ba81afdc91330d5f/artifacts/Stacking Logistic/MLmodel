@@ -1,0 +1,20 @@
+artifact_path: Stacking Logistic
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.4.2
+mlflow_version: 2.13.0
+model_size_bytes: 8048428
+model_uuid: 1a1838f4e6cc40938c5593f0c812df70
+run_id: 6f40eeb8257b43f6ba81afdc91330d5f
+utc_time_created: '2024-07-11 22:59:53.637378'

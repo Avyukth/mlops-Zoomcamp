@@ -180,12 +180,13 @@ def create_stacking_models(grid_search_results):
     
     return stacking_logist, stacking_lgbm
 
-
 def main(data_dir):
     mlflow.set_tracking_uri("sqlite:///data/mlflow.db")
     mlflow.set_experiment("Heart Disease Classification")
     
-    with mlflow.start_run():
+    client = mlflow.tracking.MlflowClient()
+    experiment = client.get_experiment_by_name("Heart Disease Classification")
+    with mlflow.start_run() as run:
         x_train, x_test, y_train, y_test = process_data(data_dir)
         mlflow.log_param("train_size", len(x_train))
         mlflow.log_param("test_size", len(x_test))
@@ -209,12 +210,19 @@ def main(data_dir):
                 
                 # Log the model
                 mlflow.sklearn.log_model(model, name)
-        
+                
+                # Log the scores as metrics for future reference
+                cv_score = grid_search_results.get(name, {}).get('best_score_', None)
+                if cv_score is not None:
+                    mlflow.log_metric(f'{name}_cv_score', cv_score)
+                if test_score is not None:
+                    mlflow.log_metric(f'{name}_test_score', test_score)
+
         # Create and log a summary plot
         plt.figure(figsize=(12,8))
         scores = pd.DataFrame({
             'Model': names,
-            'CV Score': [grid_search_results[name].best_score_ for name in names],
+            'CV Score': [grid_search_results.get(name, {}).get('best_score_', None) for name in names],
             'Test Score': [evaluate_model(models[names.index(name)], x_train, y_train, x_test, y_test)[1] for name in names]
         })
         scores = scores.melt(id_vars='Model', var_name='Type', value_name='Score')
@@ -224,7 +232,6 @@ def main(data_dir):
         plt.tight_layout()
         plt.savefig('model_comparison.png')
         mlflow.log_artifact('model_comparison.png')
-
 # Usage
 # X, y = load_your_data()  # Load your dataset
 main("./data/dataset_heart.csv")

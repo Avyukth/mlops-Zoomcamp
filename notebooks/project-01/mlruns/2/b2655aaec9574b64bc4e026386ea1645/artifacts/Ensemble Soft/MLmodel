@@ -1,0 +1,20 @@
+artifact_path: Ensemble Soft
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.4.2
+mlflow_version: 2.13.0
+model_size_bytes: 5051886
+model_uuid: c9140886a66e4c768f0edfc80970db96
+run_id: b2655aaec9574b64bc4e026386ea1645
+utc_time_created: '2024-07-11 22:47:35.549215'
