@@ -121,39 +121,33 @@ def perform_grid_search(
 
 
 def create_ensemble_models(grid_search_results):
-    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
+    best_models = [grid_search.best_estimator_ for grid_search in grid_search_results.values()]
     
     ensemble_soft = VotingClassifier(
-        estimators=[
-            (f"Model_{i}", model) for i, model in enumerate(best_models)
-        ],
-        voting="soft"
+        estimators=[(name, model) for name, model in zip(grid_search_results.keys(), best_models)],
+        voting='soft'
     )
-
+    
     ensemble_hard = VotingClassifier(
-        estimators=[
-            (f"Model_{i}", model) for i, model in enumerate(best_models)
-        ],
-        voting="hard"
+        estimators=[(name, model) for name, model in zip(grid_search_results.keys(), best_models)],
+        voting='hard'
     )
     
     return ensemble_soft, ensemble_hard
 
-def create_stacking_models(
-    grid_search_results: Dict[str, GridSearchCV]
-) -> Tuple[StackingClassifier, StackingClassifier]:
-    """Create stacking models."""
-    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
-
+def create_stacking_models(grid_search_results):
+    best_models = [grid_search.best_estimator_ for grid_search in grid_search_results.values()]
+    
     stacking_logist = StackingClassifier(
         classifiers=best_models,
-        meta_classifier=best_models[0],
+        meta_classifier=LogisticRegression()
     )
+    
     stacking_lgbm = StackingClassifier(
         classifiers=best_models,
-        meta_classifier=best_models[7],
+        meta_classifier=LGBMClassifier()
     )
-
+    
     return stacking_logist, stacking_lgbm
 
 
