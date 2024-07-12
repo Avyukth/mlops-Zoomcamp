@@ -1,0 +1,20 @@
+artifact_path: Stacking_LGBM
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.4.2
+mlflow_version: 2.13.0
+model_size_bytes: 10060923
+model_uuid: b9975a90affa4bca804d4055ce1d9370
+run_id: fbd1b8f5609c4c32824c28f770fcea1c
+utc_time_created: '2024-07-12 15:36:05.499692'

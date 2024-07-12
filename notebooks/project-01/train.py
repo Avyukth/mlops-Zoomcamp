@@ -120,8 +120,9 @@ def perform_grid_search(
     return grid_search_results
 
 
-def create_ensemble_models(grid_search_results):
-    best_models = [grid_search.best_estimator_ for grid_search in grid_search_results.values()]
+def create_ensemble_models(grid_search_results: Dict[str, GridSearchCV]) -> Tuple[VotingClassifier, VotingClassifier]:
+    # Update type hints and return type
+    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
     
     ensemble_soft = VotingClassifier(
         estimators=[(name, model) for name, model in zip(grid_search_results.keys(), best_models)],
@@ -135,8 +136,10 @@ def create_ensemble_models(grid_search_results):
     
     return ensemble_soft, ensemble_hard
 
-def create_stacking_models(grid_search_results):
-    best_models = [grid_search.best_estimator_ for grid_search in grid_search_results.values()]
+
+def create_stacking_models(grid_search_results: Dict[str, GridSearchCV]) -> Tuple[StackingClassifier, StackingClassifier]:
+    # Update type hints and return type
+    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
     
     stacking_logist = StackingClassifier(
         classifiers=best_models,
@@ -252,12 +255,8 @@ def load_models_and_results(
     return models, results, x_train, x_test, y_train, y_test
 
 
-def train_models(data_dir):
-    """Train all models."""
-    x_train: pd.DataFrame
-    y_train: pd.Series
-    x_test: pd.DataFrame
-    y_test: pd.Series
+def train_models(data_dir: str) -> Tuple[List, List[str], Dict[str, GridSearchCV], pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    # Update return type hint
     x_train, x_test, y_train, y_test = process_data(data_dir)
 
     print(f"Shape of x_train: {x_train.shape}")
@@ -265,7 +264,7 @@ def train_models(data_dir):
     print(f"Shape of x_test: {x_test.shape}")
     print(f"Shape of y_test: {y_test.shape}")
 
-    grid_search_results: Dict[str, GridSearchCV] = perform_grid_search(x_train, y_train)
+    grid_search_results = perform_grid_search(x_train, y_train)
 
     ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
     stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
@@ -273,11 +272,10 @@ def train_models(data_dir):
     models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
     names = ["Ensemble_Soft", "Ensemble_Hard", "Stacking_Logistic", "Stacking_LGBM"]
 
-    save_models_and_results(
-        models, names, grid_search_results, x_train, y_train, x_test, y_test
-    )
+    save_models_and_results(models, names, grid_search_results, x_train, y_train, x_test, y_test)
 
     return models, names, grid_search_results, x_train, x_test, y_train, y_test
+
 
 
 def create_performance_plot(
