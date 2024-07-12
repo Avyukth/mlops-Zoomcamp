@@ -43,7 +43,7 @@ def evaluate_model(model, X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.
     plt.savefig('confusion_matrix.png')
     mlflow.log_artifact('confusion_matrix.png')
     plt.close()
-
+    mlflow.sklearn.log_model(model, f"{model.__class__.__name__}")
     return train_accuracy, test_accuracy
 
 def log_feature_importance(model, feature_names):
