@@ -1,1 +1,0 @@
-{"Ensemble_Soft": {"cv_score": null, "train_score": 0.963, "test_score": 0.815}, "Ensemble_Hard": {"cv_score": null, "train_score": 0.931, "test_score": 0.833}, "Stacking_Logistic": {"cv_score": null, "train_score": 1.0, "test_score": 0.833}, "Stacking_LGBM": {"cv_score": null, "train_score": 1.0, "test_score": 0.796}}

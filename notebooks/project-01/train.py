@@ -241,37 +241,25 @@ def load_models_and_results(
     return models, results, x_train, x_test, y_train, y_test
 
 
-def train_models(
-    data_dir: str,
-) -> Tuple[
-    List,
-    List[str],
-    Dict[str, GridSearchCV],
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.Series,
-    pd.Series,
-]:
+def train_models(data_dir):
     """Train all models."""
-    
     x_train, x_test, y_train, y_test = process_data(data_dir)
+    
     print(f"Shape of x_train: {x_train.shape}")
     print(f"Shape of y_train: {y_train.shape}")
     print(f"Shape of x_test: {x_test.shape}")
     print(f"Shape of y_test: {y_test.shape}")
 
     grid_search_results = perform_grid_search(x_train, y_train)
-
+    
     ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
     stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
-
+    
     models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
-    names = ["Ensemble_Soft", "Ensemble_Hard", "Stacking_Logistic", "Stacking_LGBM"]
-
-    save_models_and_results(
-        models, names, grid_search_results, x_train, y_train, x_test, y_test
-    )
-
+    names = ['Ensemble_Soft', 'Ensemble_Hard', 'Stacking_Logistic', 'Stacking_LGBM']
+    
+    save_models_and_results(models, names, grid_search_results, x_train, y_train, x_test, y_test)
+    
     return models, names, grid_search_results, x_train, x_test, y_train, y_test
 
 
