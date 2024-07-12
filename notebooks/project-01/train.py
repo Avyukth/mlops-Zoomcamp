@@ -9,14 +9,17 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from catboost import CatBoostClassifier
+from data_process import main as process_data
 from lightgbm import LGBMClassifier
 from mlflow.tracking import MlflowClient
 from mlxtend.classifier import StackingClassifier
-from sklearn.ensemble import (ExtraTreesClassifier, RandomForestClassifier,
-                              VotingClassifier)
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    RandomForestClassifier,
+    VotingClassifier,
+)
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, classification_report,
-                             confusion_matrix)
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -25,8 +28,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
-
-from data_process import process_data
 
 # Constants
 MODEL_DIR = "./models"
