@@ -120,27 +120,24 @@ def perform_grid_search(
     return grid_search_results
 
 
-def create_ensemble_models(
-    grid_search_results: Dict[str, GridSearchCV],
-    x_train: pd.DataFrame,
-    y_train: pd.Series
-) -> Tuple[VotingClassifier, VotingClassifier]:
-    """Create ensemble models."""
-    best_models = [
-        (name, gs.best_estimator_) for name, gs in grid_search_results.items()
-    ]
+def create_ensemble_models(grid_search_results):
+    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
+    
+    ensemble_soft = VotingClassifier(
+        estimators=[
+            (f"Model_{i}", model) for i, model in enumerate(best_models)
+        ],
+        voting="soft"
+    )
 
-    ensemble_soft = VotingClassifier(estimators=best_models, voting="soft", n_jobs=-1)
-    ensemble_hard = VotingClassifier(estimators=best_models, voting="hard", n_jobs=-1)
-
-    # Fit the VotingClassifiers with a small subset of data to initialize them
-    X_sample = x_train.iloc[:100]  # Use the first 100 samples
-    y_sample = y_train.iloc[:100]
-    ensemble_soft.fit(X_sample, y_sample)
-    ensemble_hard.fit(X_sample, y_sample)
-
+    ensemble_hard = VotingClassifier(
+        estimators=[
+            (f"Model_{i}", model) for i, model in enumerate(best_models)
+        ],
+        voting="hard"
+    )
+    
     return ensemble_soft, ensemble_hard
-
 
 def create_stacking_models(
     grid_search_results: Dict[str, GridSearchCV]
@@ -149,10 +146,12 @@ def create_stacking_models(
     best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
 
     stacking_logist = StackingClassifier(
-        classifiers=best_models, final_estimator=LogisticRegression(), cv=5
+        classifiers=best_models,
+        meta_classifier=best_models[0],
     )
     stacking_lgbm = StackingClassifier(
-        classifiers=best_models, final_estimator=LGBMClassifier(), cv=5
+        classifiers=best_models,
+        meta_classifier=best_models[7],
     )
 
     return stacking_logist, stacking_lgbm
@@ -168,8 +167,8 @@ def evaluate_model(
     """Evaluate a model and log results."""
     try:
         # Ensure y is 1d
-        y_train = y_train.squeeze()
-        y_test = y_test.squeeze()
+        y_train = pd.Series(y_train)
+        y_test = pd.Series(y_test)
 
         model.fit(x_train, y_train)
         train_pred = model.predict(x_train)
@@ -180,13 +179,18 @@ def evaluate_model(
         report = classification_report(y_test, test_pred, output_dict=True)
         mlflow.log_metrics(
             {
-                f"{model.__class__.__name__}_precision": report["weighted avg"][
-                    "precision"
-                ],
-                f"{model.__class__.__name__}_recall": report["weighted avg"]["recall"],
-                f"{model.__class__.__name__}_f1-score": report["weighted avg"][
-                    "f1-score"
-                ],
+                k: float(v)
+                for k, v in {
+                    f"{model.__class__.__name__}_precision": report["weighted avg"][
+                        "precision"
+                    ],
+                    f"{model.__class__.__name__}_recall": report["weighted avg"][
+                        "recall"
+                    ],
+                    f"{model.__class__.__name__}_f1-score": report["weighted avg"][
+                        "f1-score"
+                    ],
+                }.items()
             }
         )
 
@@ -226,7 +230,7 @@ def save_models_and_results(
         train_score, test_score = evaluate_model(
             model, x_train, y_train, x_test, y_test
         )
-        cv_score = grid_search_results.get(name, {}).get("best_score_")
+        cv_score = grid_search_results.get(name, {}).get("best_score_", 0.0)
 
         results[name] = {
             "cv_score": cv_score,
@@ -256,6 +260,10 @@ def load_models_and_results(
 
 def train_models(data_dir):
     """Train all models."""
+    x_train: pd.DataFrame
+    y_train: pd.Series
+    x_test: pd.DataFrame
+    y_test: pd.Series
     x_train, x_test, y_train, y_test = process_data(data_dir)
 
     print(f"Shape of x_train: {x_train.shape}")
@@ -263,9 +271,9 @@ def train_models(data_dir):
     print(f"Shape of x_test: {x_test.shape}")
     print(f"Shape of y_test: {y_test.shape}")
 
-    grid_search_results = perform_grid_search(x_train, y_train)
+    grid_search_results: Dict[str, GridSearchCV] = perform_grid_search(x_train, y_train)
 
-    ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results, x_train, y_train)
+    ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
     stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
 
     models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
@@ -276,7 +284,8 @@ def train_models(data_dir):
     )
 
     return models, names, grid_search_results, x_train, x_test, y_train, y_test
-    
+
+
 def create_performance_plot(
     models: List,
     names: List[str],
@@ -312,7 +321,11 @@ def create_performance_plot(
 
 def main(data_dir: str, rerun_evaluation: bool = False) -> None:
     """Main function to run the entire pipeline."""
-    client, experiment_id = setup_mlflow("Heart Disease Classification")
+    client, experiment = setup_mlflow("Heart Disease Classification")
+    if experiment:
+        experiment_id = experiment
+    else:
+        experiment_id = None
 
     names = ["Ensemble_Soft", "Ensemble_Hard", "Stacking_Logistic", "Stacking_LGBM"]
 
@@ -323,8 +336,8 @@ def main(data_dir: str, rerun_evaluation: bool = False) -> None:
             )
 
             # Ensure y is 1d
-            y_train = y_train.squeeze()
-            y_test = y_test.squeeze()
+            y_train = pd.Series(y_train)
+            y_test = pd.Series(y_test)
     else:
         models, results, x_train, x_test, y_train, y_test = load_models_and_results(
             names
