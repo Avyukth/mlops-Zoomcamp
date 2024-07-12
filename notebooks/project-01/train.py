@@ -10,17 +10,14 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from catboost import CatBoostClassifier
-from data_process import main as process_data
 from lightgbm import LGBMClassifier
 from mlflow.tracking import MlflowClient
 from mlxtend.classifier import StackingClassifier
-from sklearn.ensemble import (
-    ExtraTreesClassifier,
-    RandomForestClassifier,
-    VotingClassifier,
-)
+from sklearn.ensemble import (ExtraTreesClassifier, RandomForestClassifier,
+                              VotingClassifier)
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix)
 from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -29,6 +26,8 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
+
+from data_process import main as process_data
 
 # Constants
 MODEL_DIR = "./models"
@@ -122,7 +121,9 @@ def perform_grid_search(
 
 
 def create_ensemble_models(
-    grid_search_results: Dict[str, GridSearchCV]
+    grid_search_results: Dict[str, GridSearchCV],
+    x_train: pd.DataFrame,
+    y_train: pd.Series
 ) -> Tuple[VotingClassifier, VotingClassifier]:
     """Create ensemble models."""
     best_models = [
@@ -131,6 +132,12 @@ def create_ensemble_models(
 
     ensemble_soft = VotingClassifier(estimators=best_models, voting="soft", n_jobs=-1)
     ensemble_hard = VotingClassifier(estimators=best_models, voting="hard", n_jobs=-1)
+
+    # Fit the VotingClassifiers with a small subset of data to initialize them
+    X_sample = x_train.iloc[:100]  # Use the first 100 samples
+    y_sample = y_train.iloc[:100]
+    ensemble_soft.fit(X_sample, y_sample)
+    ensemble_hard.fit(X_sample, y_sample)
 
     return ensemble_soft, ensemble_hard
 
@@ -142,10 +149,10 @@ def create_stacking_models(
     best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
 
     stacking_logist = StackingClassifier(
-        classifiers=best_models, meta_classifier=LogisticRegression()
+        classifiers=best_models, final_estimator=LogisticRegression(), cv=5
     )
     stacking_lgbm = StackingClassifier(
-        classifiers=best_models, meta_classifier=LGBMClassifier()
+        classifiers=best_models, final_estimator=LGBMClassifier(), cv=5
     )
 
     return stacking_logist, stacking_lgbm
@@ -160,6 +167,10 @@ def evaluate_model(
 ) -> Tuple[float, float]:
     """Evaluate a model and log results."""
     try:
+        # Ensure y is 1d
+        y_train = y_train.squeeze()
+        y_test = y_test.squeeze()
+
         model.fit(x_train, y_train)
         train_pred = model.predict(x_train)
         test_pred = model.predict(x_test)
@@ -254,7 +265,7 @@ def train_models(data_dir):
 
     grid_search_results = perform_grid_search(x_train, y_train)
 
-    ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
+    ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results, x_train, y_train)
     stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
 
     models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
@@ -265,8 +276,7 @@ def train_models(data_dir):
     )
 
     return models, names, grid_search_results, x_train, x_test, y_train, y_test
-
-
+    
 def create_performance_plot(
     models: List,
     names: List[str],
@@ -311,7 +321,7 @@ def main(data_dir: str, rerun_evaluation: bool = False) -> None:
             models, names, grid_search_results, x_train, x_test, y_train, y_test = (
                 train_models(data_dir)
             )
-            
+
             # Ensure y is 1d
             y_train = y_train.squeeze()
             y_test = y_test.squeeze()
