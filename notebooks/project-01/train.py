@@ -26,6 +26,7 @@ from xgboost import XGBClassifier
 
 from data_process import main as process_data
 
+
 # Constants
 MODEL_DIR = "./models"
 RESULTS_FILE = f"{MODEL_DIR}/model_results.json"
@@ -42,10 +43,10 @@ def setup_mlflow(experiment_name: str) -> Tuple[MlflowClient, str]:
 def create_pipelines() -> Dict[str, Pipeline]:
     """Create model pipelines."""
     return {
-        "Logistic": Pipeline([("MinMaxScale", MinMaxScaler()), ("Logistic", LogisticRegression(solver="liblinear"))]),
+        "Logistic": Pipeline([("MinMaxScale", MinMaxScaler()), ("Logistic", LogisticRegression(solver="liblinear", max_iter=1000))]),
         "SVC": Pipeline([("MinMaxScale", MinMaxScaler()), ("SVC", SVC(probability=True))]),
         "KNN": Pipeline([("MinMaxScale", MinMaxScaler()), ("KNN", KNeighborsClassifier())]),
-        "MLP": Pipeline([("MinMaxScale", MinMaxScaler()), ("MLP", MLPClassifier())]),
+        "MLP": Pipeline([("MinMaxScale", MinMaxScaler()), ("MLP", MLPClassifier(max_iter=1000))]),
         "RandomForest": Pipeline([("RandomForest", RandomForestClassifier())]),
         "ExtraTrees": Pipeline([("ExtraTrees", ExtraTreesClassifier())]),
         "CatBoost": Pipeline([("CatBoost", CatBoostClassifier(verbose=0))]),
@@ -94,17 +95,17 @@ def create_ensemble_models(grid_search_results: Dict[str, GridSearchCV]) -> Tupl
     return ensemble_soft, ensemble_hard
 
 def create_stacking_models(grid_search_results: Dict[str, GridSearchCV]) -> Tuple[StackingClassifier, StackingClassifier]:
-    best_models = [gs.best_estimator_ for gs in grid_search_results.values()]
+    best_models = [(name, gs.best_estimator_) for name, gs in grid_search_results.items()]
     
     stacking_logist = StackingClassifier(
-        classifiers=best_models[:-1],
+        classifiers=[model for _, model in best_models[:-1]],
         meta_classifier=LogisticRegression(),
         use_probas=True,
         average_probas=False
     )
     
     stacking_lgbm = StackingClassifier(
-        classifiers=best_models[:-1],
+        classifiers=[model for _, model in best_models[:-1]],
         meta_classifier=LGBMClassifier(),
         use_probas=True,
         average_probas=False
@@ -261,7 +262,7 @@ def main(data_dir: str, rerun_evaluation: bool = False) -> None:
             mlflow.sklearn.log_model(model, name)
 
         create_performance_plot(models, names, grid_search_results, x_train, x_test, y_train, y_test)
-
+        
 
 def predict(model_name: str, data: pd.DataFrame) -> np.ndarray:
     """Make predictions using a saved model."""
