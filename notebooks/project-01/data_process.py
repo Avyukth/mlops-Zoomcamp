@@ -122,20 +122,30 @@ def save_processed_data(
     mlflow.log_artifacts(DATA_DIR)
 
 
-def process_data(
-    data_path: str,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Main function to process data."""
-    setup_directories()
-    setup_mlflow()
+def main(df: pd.DataFrame, target_column: str = "heart disease") -> Tuple[pd.DataFrame, pd.Series, List[str], List[str]]:
+    """Preprocess the data."""
+    X = df.drop(target_column, axis=1)
+    y = df[target_column]
 
-    with mlflow.start_run():
-        df = read_data(data_path)
-        X, y, cat_value, num_value = preprocess_data(df)
-        x_train, x_test, y_train, y_test = prepare_train_test_split(X, y)
-        save_processed_data(X, y, x_train, x_test, y_train, y_test)
+    summary = summarize_data(df)
+    cat_value, num_value = split_data_types(summary)
 
-    return x_train, x_test, y_train, y_test
+    cat_value = [col for col in cat_value if col != target_column]
+
+    for col in cat_value:
+        X[col] = X[col].astype("category")
+
+    X = pd.get_dummies(X)
+    
+    # Ensure y is binary and 1d
+    y = (y == 2).astype(int).squeeze()  # Assuming 2 is the positive class, adjust if necessary
+
+    mlflow.log_params({
+        "num_features_after_encoding": X.shape[1],
+        "target_distribution": dict(y.value_counts(normalize=True))
+    })
+
+    return X, y, cat_value, num_value
 
 
 def load_processed_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -145,4 +155,4 @@ def load_processed_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Ser
 
 if __name__ == "__main__":
     data_path = f"{DATA_DIR}/dataset_heart.csv"
-    x_train, x_test, y_train, y_test = process_data(data_path)
+    x_train, x_test, y_train, y_test = main(data_path)

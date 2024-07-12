@@ -128,8 +128,8 @@ def create_ensemble_models(
         (name, gs.best_estimator_) for name, gs in grid_search_results.items()
     ]
 
-    ensemble_soft = VotingClassifier(estimators=best_models, voting="soft")
-    ensemble_hard = VotingClassifier(estimators=best_models, voting="hard")
+    ensemble_soft = VotingClassifier(estimators=best_models, voting="soft", n_jobs=-1)
+    ensemble_hard = VotingClassifier(estimators=best_models, voting="hard", n_jobs=-1)
 
     return ensemble_soft, ensemble_hard
 
@@ -158,34 +158,42 @@ def evaluate_model(
     y_test: pd.Series,
 ) -> Tuple[float, float]:
     """Evaluate a model and log results."""
-    model.fit(x_train, y_train)
-    train_pred = model.predict(x_train)
-    test_pred = model.predict(x_test)
-    train_score = round(accuracy_score(y_train, train_pred), 3)
-    test_score = round(accuracy_score(y_test, test_pred), 3)
+    try:
+        model.fit(x_train, y_train)
+        train_pred = model.predict(x_train)
+        test_pred = model.predict(x_test)
+        train_score = round(accuracy_score(y_train, train_pred), 3)
+        test_score = round(accuracy_score(y_test, test_pred), 3)
 
-    report = classification_report(y_test, test_pred, output_dict=True)
-    mlflow.log_metrics(
-        {
-            f"{model.__class__.__name__}_precision": report["weighted avg"][
-                "precision"
-            ],
-            f"{model.__class__.__name__}_recall": report["weighted avg"]["recall"],
-            f"{model.__class__.__name__}_f1-score": report["weighted avg"]["f1-score"],
-        }
-    )
+        report = classification_report(y_test, test_pred, output_dict=True)
+        mlflow.log_metrics(
+            {
+                f"{model.__class__.__name__}_precision": report["weighted avg"][
+                    "precision"
+                ],
+                f"{model.__class__.__name__}_recall": report["weighted avg"]["recall"],
+                f"{model.__class__.__name__}_f1-score": report["weighted avg"][
+                    "f1-score"
+                ],
+            }
+        )
 
-    cm = confusion_matrix(y_test, test_pred)
-    plt.figure(figsize=(10, 7))
-    sns.heatmap(cm, annot=True, fmt="d")
-    plt.title(f"Confusion Matrix - {model.__class__.__name__}")
-    plt.ylabel("Actual")
-    plt.xlabel("Predicted")
-    plt.savefig(f"{MODEL_DIR}/{model.__class__.__name__}_confusion_matrix.png")
-    mlflow.log_artifact(f"{MODEL_DIR}/{model.__class__.__name__}_confusion_matrix.png")
-    plt.close()
+        cm = confusion_matrix(y_test, test_pred)
+        plt.figure(figsize=(10, 7))
+        sns.heatmap(cm, annot=True, fmt="d")
+        plt.title(f"Confusion Matrix - {model.__class__.__name__}")
+        plt.ylabel("Actual")
+        plt.xlabel("Predicted")
+        plt.savefig(f"{MODEL_DIR}/{model.__class__.__name__}_confusion_matrix.png")
+        mlflow.log_artifact(
+            f"{MODEL_DIR}/{model.__class__.__name__}_confusion_matrix.png"
+        )
+        plt.close()
 
-    return train_score, test_score
+        return train_score, test_score
+    except Exception as e:
+        print(f"Error evaluating model {model.__class__.__name__}: {str(e)}")
+        return 0.0, 0.0
 
 
 def save_models_and_results(
@@ -245,7 +253,12 @@ def train_models(
     pd.Series,
 ]:
     """Train all models."""
+    
     x_train, x_test, y_train, y_test = process_data(data_dir)
+    print(f"Shape of x_train: {x_train.shape}")
+    print(f"Shape of y_train: {y_train.shape}")
+    print(f"Shape of x_test: {x_test.shape}")
+    print(f"Shape of y_test: {y_test.shape}")
 
     grid_search_results = perform_grid_search(x_train, y_train)
 
@@ -277,7 +290,7 @@ def create_performance_plot(
         {
             "Model": names,
             "CV Score": [
-                grid_search_results.get(name, {}).get("best_score_", None)
+                grid_search_results.get(name, {}).get("best_score_", 0.0)
                 for name in names
             ],
             "Test Score": [
