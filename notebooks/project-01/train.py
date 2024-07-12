@@ -3,6 +3,8 @@ import mlflow
 import mlflow.sklearn
 import pandas as pd
 import seaborn as sns
+import joblib
+import json
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 from mlxtend.classifier import StackingClassifier
@@ -21,6 +23,7 @@ from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
 
 from data_process import main as process_data
+from mlflow.tracking import MlflowClient
 
 
 def create_base_models():
@@ -180,58 +183,118 @@ def create_stacking_models(grid_search_results):
     
     return stacking_logist, stacking_lgbm
 
-def main(data_dir):
+def setup_mlflow(experiment_name):
     mlflow.set_tracking_uri("sqlite:///data/mlflow.db")
-    mlflow.set_experiment("Heart Disease Classification")
-    
-    client = mlflow.tracking.MlflowClient()
-    experiment = client.get_experiment_by_name("Heart Disease Classification")
-    with mlflow.start_run() as run:
-        x_train, x_test, y_train, y_test = process_data(data_dir)
-        mlflow.log_param("train_size", len(x_train))
-        mlflow.log_param("test_size", len(x_test))
-        
-        grid_search_results = perform_grid_search(x_train, y_train)
-        print_best_scores(grid_search_results)
-        
-        ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
-        stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
-        
-        models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
-        names = ['Ensemble Soft', 'Ensemble Hard', 'Stacking Logistic', 'Stacking LGBM']
-        
-        for name, model in zip(names, models):
-            with mlflow.start_run(nested=True):
-                mlflow.log_param("model_name", name)
-                train_score, test_score = evaluate_model(model, x_train, y_train, x_test, y_test)
-                mlflow.log_metric("train_score", train_score)
-                mlflow.log_metric("test_score", test_score)
-                print(f'{name} - Train Score: {train_score}, Test Score: {test_score}')
-                
-                # Log the model
-                mlflow.sklearn.log_model(model, name)
-                
-                # Log the scores as metrics for future reference
-                cv_score = grid_search_results.get(name, {}).get('best_score_', None)
-                if cv_score is not None:
-                    mlflow.log_metric(f'{name}_cv_score', cv_score)
-                if test_score is not None:
-                    mlflow.log_metric(f'{name}_test_score', test_score)
+    mlflow.set_experiment(experiment_name)
+    client = MlflowClient()
+    experiment = client.get_experiment_by_name(experiment_name)
+    return client, experiment
 
-        # Create and log a summary plot
-        plt.figure(figsize=(12,8))
-        scores = pd.DataFrame({
-            'Model': names,
-            'CV Score': [grid_search_results.get(name, {}).get('best_score_', None) for name in names],
-            'Test Score': [evaluate_model(models[names.index(name)], x_train, y_train, x_test, y_test)[1] for name in names]
-        })
-        scores = scores.melt(id_vars='Model', var_name='Type', value_name='Score')
-        sns.barplot(x='Model', y='Score', hue='Type', data=scores)
-        plt.title('Model Performance Comparison')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig('model_comparison.png')
-        mlflow.log_artifact('model_comparison.png')
+def log_model_performance(name, model, x_train, y_train, x_test, y_test, cv_score=None):
+    with mlflow.start_run(nested=True):
+        mlflow.log_param("model_name", name)
+        train_score, test_score = evaluate_model(model, x_train, y_train, x_test, y_test)
+        mlflow.log_metric("train_score", train_score)
+        mlflow.log_metric("test_score", test_score)
+        print(f'{name} - Train Score: {train_score}, Test Score: {test_score}')
+        
+        # Log the model
+        mlflow.sklearn.log_model(model, name)
+        
+        # Log the scores as metrics for future reference
+        if cv_score is not None:
+            mlflow.log_metric(f'{name}_cv_score', float(cv_score))
+        mlflow.log_metric(f'{name}_test_score', float(test_score))
+
+def create_performance_plot(models, names, grid_search_results, x_train, y_train, x_test, y_test):
+    plt.figure(figsize=(12,8))
+    scores = pd.DataFrame({
+        'Model': names,
+        'CV Score': [grid_search_results.get(name, {}).get('best_score_', None) for name in names],
+        'Test Score': [evaluate_model(model, x_train, y_train, x_test, y_test)[1] for model in models]
+    })
+    scores = scores.melt(id_vars='Model', var_name='Type', value_name='Score')
+    sns.barplot(x='Model', y='Score', hue='Type', data=scores)
+    plt.title('Model Performance Comparison')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig('model_comparison.png')
+    mlflow.log_artifact('model_comparison.png')
+
+
+
+def save_models_and_results(models, names, grid_search_results, x_train, y_train, x_test, y_test):
+    results = {}
+    for name, model in zip(names, models):
+        # Save the model
+        joblib.dump(model, f'{name}_model.joblib')
+        
+        # Evaluate the model
+        train_score, test_score = evaluate_model(model, x_train, y_train, x_test, y_test)
+        cv_score = grid_search_results.get(name, {}).get('best_score_')
+        
+        # Store the results
+        results[name] = {
+            'cv_score': cv_score,
+            'train_score': train_score,
+            'test_score': test_score
+        }
+    
+    # Save the results
+    with open('model_results.json', 'w') as f:
+        json.dump(results, f)
+
+    # Save the data splits
+    joblib.dump((x_train, x_test, y_train, y_test), 'data_splits.joblib')
+
+
+def load_models_and_results(names):
+    models = []
+    for name in names:
+        models.append(joblib.load(f'{name}_model.joblib'))
+    
+    with open('model_results.json', 'r') as f:
+        results = json.load(f)
+    
+    x_train, x_test, y_train, y_test = joblib.load('data_splits.joblib')
+    
+    return models, results, x_train, x_test, y_train, y_test
 # Usage
 # X, y = load_your_data()  # Load your dataset
-main("./data/dataset_heart.csv")
+
+
+
+
+def main(data_dir, rerun_evaluation=False):
+    client, experiment = setup_mlflow("Heart Disease Classification")
+    
+    names = ['Ensemble_Soft', 'Ensemble_Hard', 'Stacking_Logistic', 'Stacking_LGBM']
+
+    if not rerun_evaluation:
+        with mlflow.start_run() as run:
+            x_train, x_test, y_train, y_test = process_data(data_dir)
+            mlflow.log_param("train_size", len(x_train))
+            mlflow.log_param("test_size", len(x_test))
+            
+            grid_search_results = perform_grid_search(x_train, y_train)
+            print_best_scores(grid_search_results)
+            
+            ensemble_soft, ensemble_hard = create_ensemble_models(grid_search_results)
+            stacking_logist, stacking_lgbm = create_stacking_models(grid_search_results)
+            
+            models = [ensemble_soft, ensemble_hard, stacking_logist, stacking_lgbm]
+            
+            save_models_and_results(models, names, grid_search_results, x_train, y_train, x_test, y_test)
+    else:
+        models, results, x_train, x_test, y_train, y_test = load_models_and_results(names)
+        grid_search_results = {name: {'best_score_': results[name]['cv_score']} for name in names}
+
+    with mlflow.start_run() as run:
+        for name, model in zip(names, models):
+            cv_score = grid_search_results.get(name, {}).get('best_score_')
+            log_model_performance(name, model, x_train, y_train, x_test, y_test, cv_score)
+
+        create_performance_plot(models, names, grid_search_results, x_train, y_train, x_test, y_test)
+
+if __name__ == "__main__":
+    main("./data/dataset_heart.csv", rerun_evaluation=False)  # Set to True to rerun evaluation
