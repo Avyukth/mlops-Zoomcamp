@@ -37,3 +37,25 @@ def plot_roc_curve(y_true, y_pred_proba, model_name):
     plt.legend(loc="lower right")
     plt.savefig('roc_curve.png')
     mlflow.log_artifact('roc_curve.png')
+
+def create_performance_plot(results: dict, output_path: str):
+    models = list(results.keys())
+    train_scores = [results[model]['train_score'] for model in models]
+    test_scores = [results[model]['test_score'] for model in models]
+
+    plt.figure(figsize=(12, 6))
+    x = range(len(models))
+    width = 0.35
+
+    plt.bar([i - width/2 for i in x], train_scores, width, label='Train Score', color='skyblue')
+    plt.bar([i + width/2 for i in x], test_scores, width, label='Test Score', color='orange')
+
+    plt.xlabel('Models')
+    plt.ylabel('Scores')
+    plt.title('Model Performance Comparison')
+    plt.xticks(x, models, rotation=45, ha='right')
+    plt.legend()
+    plt.tight_layout()
+
+    plt.savefig(output_path)
+    mlflow.log_artifact(output_path)

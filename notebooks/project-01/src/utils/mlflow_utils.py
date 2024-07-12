@@ -1,6 +1,7 @@
 import mlflow
 from mlflow.tracking import MlflowClient
 
+
 def setup_mlflow(experiment_name: str) -> str:
     """
     Set up MLflow tracking.
@@ -11,7 +12,7 @@ def setup_mlflow(experiment_name: str) -> str:
     Returns:
         str: Experiment ID
     """
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_tracking_uri("sqlite:///data/mlflow.db")
     mlflow.set_experiment(experiment_name)
     client = MlflowClient()
     experiment = client.get_experiment_by_name(experiment_name)
