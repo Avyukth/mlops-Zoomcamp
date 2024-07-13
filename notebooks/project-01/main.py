@@ -1,18 +1,21 @@
 import os
+from typing import Dict, List, Tuple
+
 import mlflow
 import pandas as pd
-from typing import Dict, List, Tuple
 
 from src.data.data_loader import DataLoader
 from src.data.data_preprocessor import DataPreprocessor
 from src.data.data_splitter import DataSplitter
-from src.utils.mlflow_utils import setup_mlflow
-from src.models.base_model import BaseModel
-from src.ensemble.voting import VotingEnsemble
 from src.ensemble.stacking import StackingEnsemble
+from src.ensemble.voting import VotingEnsemble
 from src.evaluation.metrics import evaluate_model, log_feature_importance
-from src.evaluation.visualizations import create_performance_plot, plot_feature_importance, plot_roc_curve
-from src.utils.file_utils import load_config
+from src.evaluation.visualizations import (create_performance_plot,
+                                           plot_feature_importance,
+                                           plot_roc_curve)
+from src.models.base_model import BaseModel
+from src.utils.file_utils import load_config, load_model, save_model
+from src.utils.mlflow_utils import setup_mlflow
 
 # Constants
 DATA_DIR = "./data/dataset_heart.csv"
@@ -20,13 +23,31 @@ MODEL_DIR = "./models"
 CONFIG_PATH = "./config/model_params.yaml"
 EXPERIMENT_NAME = "Heart Disease Classification"
 
-def load_and_preprocess_data(data_path: str) -> Tuple[pd.DataFrame, pd.Series, List[str], List[str]]:
+def load_and_preprocess_data(data_path: str, model_dir: str) -> Tuple[pd.DataFrame, pd.Series, List[str], List[str]]:
+    # Load data
     loader = DataLoader(data_path)
     df = loader.load_data()
     
+    # Initialize and fit preprocessor
     preprocessor = DataPreprocessor(target_column="heart disease")
-    X, y, cat_cols, num_cols = preprocessor.preprocess(df)
+    X, y = preprocessor.fit_transform(df)
     
+    # Get categorical and numerical column information
+    cat_cols = preprocessor.feature_preprocessor.cat_cols
+    num_cols = preprocessor.feature_preprocessor.num_cols
+    
+    # Log preprocessing info
+    preprocessor.log_preprocessing_info(X, y)
+    
+    # Save preprocessors
+    feature_preprocessor_path = os.path.join(model_dir, "feature_preprocessor.joblib")
+    target_preprocessor_path = os.path.join(model_dir, "target_preprocessor.joblib")
+    preprocessor.save(feature_preprocessor_path, target_preprocessor_path)
+    
+    # Log preprocessors as artifacts
+    mlflow.log_artifact(feature_preprocessor_path, "preprocessors")
+    mlflow.log_artifact(target_preprocessor_path, "preprocessors")
+
     return X, y, cat_cols, num_cols
 
 def split_data(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -34,14 +55,14 @@ def split_data(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.DataFram
     return splitter.split(X, y)
 
 def train_models(x_train: pd.DataFrame, y_train: pd.Series, config: Dict) -> Dict[str, BaseModel]:
-    from src.models.logistic_regression import LogisticRegressionModel
-    from src.models.svm import SVMModel
+    from src.models.catboost import CatBoostModel
+    from src.models.extra_trees import ExtraTreesModel
     from src.models.knn import KNNModel
+    from src.models.lgbm import LGBMModel
+    from src.models.logistic_regression import LogisticRegressionModel
     from src.models.mlp import MLPModel
     from src.models.random_forest import RandomForestModel
-    from src.models.extra_trees import ExtraTreesModel
-    from src.models.catboost import CatBoostModel
-    from src.models.lgbm import LGBMModel
+    from src.models.svm import SVMModel
     from src.models.xgboost import XGBoostModel
 
     models = {
@@ -81,13 +102,13 @@ def create_ensemble_models(models: Dict[str, BaseModel], x_train: pd.DataFrame, 
 
     return ensemble_models
 
-def run_experiment(data_dir: str, config_path: str):
+def run_experiment(data_dir: str, model_dir: str, config_path: str):
     mlflow.set_tracking_uri("sqlite:///data/mlflow.db")
     mlflow.set_experiment(EXPERIMENT_NAME)
 
     with mlflow.start_run():
         # Load and preprocess data
-        X, y, cat_cols, num_cols = load_and_preprocess_data(data_dir)
+        X, y, cat_cols, num_cols = load_and_preprocess_data(data_dir, model_dir)
         x_train, x_test, y_train, y_test = split_data(X, y)
 
         # Log data info
@@ -107,6 +128,7 @@ def run_experiment(data_dir: str, config_path: str):
 
         # Evaluate and log results
         results = {}
+        best_score = 0
         for name, model in models.items():
             train_score, test_score = evaluate_model(model, x_train, y_train, x_test, y_test)
             results[name] = {"train_score": train_score, "test_score": test_score}
@@ -117,6 +139,17 @@ def run_experiment(data_dir: str, config_path: str):
 
             # Log feature importance if applicable
             log_feature_importance(model, X.columns)
+                        # Keep track of the best model
+            if test_score > best_score:
+                best_score = test_score
+                best_model = model
+
+        # Save the best model
+    if best_model:
+        save_model(best_model, "best_model", MODEL_DIR)
+        mlflow.log_artifact(os.path.join(MODEL_DIR, "best_model.joblib"), "best_model")
+        mlflow.log_artifact(os.path.join(MODEL_DIR, "preprocessor.joblib"), "preprocessor")
+
 
         # Create and log performance plot
         create_performance_plot(results, f"{MODEL_DIR}/model_comparison.png")
@@ -125,7 +158,7 @@ def main():
     
     os.makedirs(MODEL_DIR, exist_ok=True)
     
-    run_experiment(DATA_DIR, CONFIG_PATH)
+    run_experiment(DATA_DIR, MODEL_DIR, CONFIG_PATH)
     
     print("Heart Disease Classification project completed.")
 
