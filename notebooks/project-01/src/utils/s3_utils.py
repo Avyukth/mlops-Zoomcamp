@@ -103,7 +103,7 @@ class S3Utils:
         Args:
             model_dir (str): Directory containing model artifacts.
         """
-        artifacts = ['best_model.joblib', 'preprocessor.joblib', 'model_comparison.png']
+        artifacts = ['best_model.joblib', 'feature_preprocessor.joblib', 'target_preprocessor.joblib', 'model_comparison.png']
         for artifact in artifacts:
             file_path = os.path.join(model_dir, artifact)
             if os.path.exists(file_path):

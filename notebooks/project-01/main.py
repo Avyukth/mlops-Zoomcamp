@@ -28,7 +28,7 @@ def run_experiment():
 
     with mlflow_utils.start_run():
         # Data preparation
-        data_manager = DataManager(config)
+        data_manager = DataManager(config, s3_utils)
         X, y, cat_cols, num_cols = data_manager.load_and_preprocess_data()
         x_train, x_test, y_train, y_test = data_manager.split_data(X, y)
 
