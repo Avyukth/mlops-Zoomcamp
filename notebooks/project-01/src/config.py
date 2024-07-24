@@ -20,6 +20,12 @@ class Config:
 
     def __getitem__(self, key):
         return self._config_data[key]
+    
+    def __str__(self):
+        config_str = "Loaded Configuration:\n"
+        for key, value in self._config_data.items():
+            config_str += f"{key.upper()}: {value}\n"
+        return config_str
 
 # Create a global instance of Config
 config = Config()
