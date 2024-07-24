@@ -46,9 +46,13 @@ try:
     model = load_from_s3(config['s3']['bucket_name'], "best_model.joblib")
     logger.info("Model loaded successfully")
     
-    logger.info("Loading preprocessor from S3...")
-    feature_preprocessor = load_from_s3(config['s3']['bucket_name'], "preprocessor.joblib")
-    logger.info("Preprocessor loaded successfully")
+    logger.info("Loading feature preprocessor from S3...")
+    feature_preprocessor = load_from_s3(config['s3']['bucket_name'], "feature_preprocessor.joblib")
+    logger.info("Feature preprocessor loaded successfully")
+    
+    logger.info("Loading target preprocessor from S3...")
+    target_preprocessor = load_from_s3(config['s3']['bucket_name'], "target_preprocessor.joblib")
+    logger.info("Target preprocessor loaded successfully")
 except FileNotFoundError as e:
     logger.error(f"File not found in S3: {str(e)}")
     raise
@@ -113,6 +117,11 @@ async def predict_heart_disease(input: HeartDiseaseInput):
         result = {"prediction": int(prediction[0])}
         if probability is not None:
             result["probability"] = float(probability[0])
+        
+        # Inverse transform the prediction if needed
+        if hasattr(target_preprocessor, 'inverse_transform'):
+            original_scale_prediction = target_preprocessor.inverse_transform(prediction.reshape(-1, 1))
+            result["original_scale_prediction"] = float(original_scale_prediction[0])
         
         return result
     except Exception as e:
