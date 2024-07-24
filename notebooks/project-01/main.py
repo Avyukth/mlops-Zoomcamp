@@ -72,8 +72,8 @@ def run_experiment():
         s3_utils.upload_performance_plot(performance_plot_path)
 
         # Set tags for the run
-        mlflow_utils.set_tag("model_version", config.MODEL_VERSION)
-        mlflow_utils.set_tag("data_version", config.DATA_VERSION)
+        mlflow_utils.set_tag("model_version", config.MODEL['version'])
+        mlflow_utils.set_tag("data_version", config.DATA['version'])
 
 def main():
     print("Starting Heart Disease Classification project...")

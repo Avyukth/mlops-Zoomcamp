@@ -21,11 +21,11 @@ train_test_split:
   test_size: 0.2
   random_state: 42
 
-model:
-  dir: "models"
+MODEL:
+  dir: "./models"
   version: "1.0.0"
 
-data:
+DATA:
   version: "1.0.0"
 
 MODEL_PARAMS:
