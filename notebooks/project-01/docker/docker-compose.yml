@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   train:
     build:
@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile.train
     volumes:
       - ./models:/app/models
-  
+
   api:
     build:
       context: .
