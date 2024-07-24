@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "heart-disease-prediction"
 version = "0.1.0"
-description = "A machine learning project for heart disease prediction"
-authors = ["Your Name <your.email@example.com>"]
+description = "A MLOPS project for heart disease prediction"
+authors = ["makur.subhrajit@gmail.com"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -15,6 +15,15 @@ catboost = "^0.26.1"
 lightgbm = "^3.2.1"
 xgboost = "^1.4.2"
 joblib = "^1.0.1"
+prefect = "^2.10.8"
+tqdm = "^4.62.3"
+requests = "^2.26.0"
+pyarrow = "^8.0.0"
+psycopg = "^3.1.8"
+psycopg-binary = "^3.1.8"
+evidently = "^0.2.8"
+numpy = "^1.21.0"
+jupyter = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

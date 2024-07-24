@@ -3,6 +3,11 @@ from typing import Dict, List, Tuple
 
 import mlflow
 import pandas as pd
+from evidently.report import Report
+from evidently.metric_preset import DataDriftPreset, DataQualityPreset, TargetDriftPreset
+from evidently.test_suite import TestSuite
+from evidently.test_preset import DataStabilityTestPreset, DataQualityTestPreset
+from evidently.tests import TestColumnDrift
 
 from src.data.data_loader import DataLoader
 from src.data.data_preprocessor import DataPreprocessor
@@ -111,6 +116,8 @@ def run_experiment(data_dir: str, model_dir: str, config_path: str):
         X, y, cat_cols, num_cols = load_and_preprocess_data(data_dir, model_dir)
         x_train, x_test, y_train, y_test = split_data(X, y)
 
+        generate_evidently_reports(x_train, y_train, x_test, y_test)
+
         # Log data info
         mlflow.log_param("data_path", data_dir)
         mlflow.log_param("num_samples", len(X))
@@ -153,6 +160,43 @@ def run_experiment(data_dir: str, model_dir: str, config_path: str):
 
         # Create and log performance plot
         create_performance_plot(results, f"{MODEL_DIR}/model_comparison.png")
+
+
+
+def generate_evidently_reports(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y_test: pd.Series):
+    """Generate Evidently Test Suite and Report."""
+    # Combine features and target for each dataset
+    train_data = pd.concat([x_train, y_train], axis=1)
+    test_data = pd.concat([x_test, y_test], axis=1)
+
+    # Create an Evidently Report
+    report = Report(metrics=[
+        DataDriftPreset(),
+        DataQualityPreset(),
+        TargetDriftPreset()
+    ])
+
+    report.run(reference_data=train_data, current_data=test_data)
+    report_path = os.path.join(MODEL_DIR, "evidently_report.html")
+    report.save_html(report_path)
+    mlflow.log_artifact(report_path, "evidently_reports")
+
+    # Create an Evidently Test Suite
+    test_suite = TestSuite(tests=[
+        DataStabilityTestPreset(),
+        DataQualityTestPreset(),
+        TestColumnDrift(column_name="age"),
+        TestColumnDrift(column_name="sex"),
+        TestColumnDrift(column_name="chest_pain_type"),
+        TestColumnDrift(column_name="resting_blood_pressure"),
+    ])
+
+    test_suite.run(reference_data=train_data, current_data=test_data)
+    test_suite_path = os.path.join(MODEL_DIR, "evidently_test_suite.html")
+    test_suite.save_html(test_suite_path)
+    mlflow.log_artifact(test_suite_path, "evidently_reports")
+
+    print(f"Evidently reports saved to {report_path} and {test_suite_path}")
 def main():
     print("Starting Heart Disease Classification project...")
     
