@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "heart-disease-api"
+version = "0.1.0"
+description = "A FastAPI application for heart disease prediction"
+authors = ["Subhrajit Makur <makur.subhrajit@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+fastapi = "^0.65.2"
+pydantic = "^1.8.2"
+boto3 = "^1.17.72"
+joblib = "^1.0.1"
+pandas = "^1.2.4"
+pyyaml = "^5.4.1"
+uvicorn = "^0.13.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+pytest-cov = "^2.12.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

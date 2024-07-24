@@ -3,6 +3,7 @@ version: "3.7"
 volumes:
   grafana_data: {}
   models: {}
+  mlflow_data: {}
 
 networks:
   front-tier:
@@ -53,6 +54,18 @@ services:
       - DEFAULT_REGION=us-east-1
     volumes:
       - ./localstack:/var/lib/localstack
+    networks:
+      - back-tier
+      - front-tier
+
+  mlflow:
+    image: mlflow:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    environment:
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
     networks:
       - back-tier
       - front-tier

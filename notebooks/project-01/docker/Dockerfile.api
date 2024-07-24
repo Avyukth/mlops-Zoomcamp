@@ -3,18 +3,15 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copy only the necessary files for the API
-COPY pyproject.toml .
-COPY config/ ./config/
-COPY src/ ./src/
-COPY api/ ./api/
+COPY pyproject.toml pyproject.toml
+COPY config/ config/
+COPY src/ src/
+COPY api/ api/
 
 # Install dependencies
 RUN pip install poetry
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
-
-# Additional dependencies for FastAPI
-RUN poetry add fastapi uvicorn
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -24,3 +21,4 @@ EXPOSE 8000
 
 # Run the API
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
