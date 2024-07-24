@@ -1,11 +1,70 @@
-version: "3"
+version: "3.7"
+
+volumes:
+  grafana_data: {}
+  models: {}
+
+networks:
+  front-tier:
+  back-tier:
+
 services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5432:5432"
+    networks:
+      - back-tier
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - back-tier
+      - front-tier
+
+  grafana:
+    image: grafana/grafana-enterprise
+    user: "472"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana_datasources.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+      - ./config/grafana_dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./dashboards:/opt/grafana/dashboards
+    networks:
+      - back-tier
+      - front-tier
+    restart: always
+
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+    volumes:
+      - ./localstack:/var/lib/localstack
+    networks:
+      - back-tier
+      - front-tier
+
   train:
     build:
       context: .
       dockerfile: Dockerfile.train
     volumes:
       - ./models:/app/models
+    networks:
+      - back-tier
 
   api:
     build:
@@ -17,6 +76,9 @@ services:
       - ./models:/app/models
     depends_on:
       - train
+    networks:
+      - back-tier
+      - front-tier
 
   streamlit:
     build:
@@ -26,6 +88,5 @@ services:
       - "8501:8501"
     depends_on:
       - api
-
-volumes:
-  models:
+    networks:
+      - front-tier

@@ -1,7 +1,6 @@
 ./
 ├── confusion_matrix.png
 ├── heart.ipynb
-├── monitoring-docker.yml
 ├── pyproject.toml
 ├── __init__.py
 ├── data_summary.csv
@@ -11,6 +10,12 @@
 ├── train.py
 ├── file_tree.txt
 ├── main.py
+├── docker/
+│   ├── monitoring-docker.yml
+│   ├── Dockerfile.streamlit
+│   ├── Dockerfile.api
+│   ├── Dockerfile.train
+│   ├── docker-compose.yml
 ├── streamlit/
 │   ├── app.py
 │   ├── artifacts/
