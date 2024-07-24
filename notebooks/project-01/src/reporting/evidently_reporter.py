@@ -9,14 +9,15 @@ from evidently.tests import TestColumnDrift
 import mlflow
 
 class EvidentlyReporter:
-    def __init__(self, output_dir: str):
+    def __init__(self, config):
+        self.config = config
         """
         Initialize the EvidentlyReporter.
 
         Args:
             output_dir (str): Directory to save the Evidently reports.
         """
-        self.output_dir = output_dir
+        self.output_dir = config.MODEL['dir']
 
     def generate_reports(self, x_train: pd.DataFrame, y_train: pd.Series, 
                          x_test: pd.DataFrame, y_test: pd.Series) -> Tuple[str, str]:
