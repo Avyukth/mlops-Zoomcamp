@@ -1,0 +1,22 @@
+# Application Settings
+data_dir: "./data/dataset_heart.csv"
+model_dir: "./models"
+model_params_path: "./config/model_params.yaml"
+experiment_name: "Heart Disease Classification"
+
+# AWS/LocalStack Settings
+s3:
+  bucket_name: "heart-disease-models"
+  endpoint_url: "http://localhost:4566"  # LocalStack default endpoint
+  access_key_id: "test"
+  secret_access_key: "test"
+  region_name: "us-east-1"
+
+# MLflow Settings
+mlflow:
+  tracking_uri: "sqlite:///data/mlflow.db"
+
+# Model Training Settings
+train_test_split:
+  test_size: 0.2
+  random_state: 42
