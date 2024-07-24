@@ -16,7 +16,7 @@ from src.utils.s3_utils import S3Utils
 
 # Initialize configuration
 config = Config()
-
+print(config)
 # Initialize utilities
 s3_utils = S3Utils(config)
 mlflow_utils = MLflowUtils(config)
