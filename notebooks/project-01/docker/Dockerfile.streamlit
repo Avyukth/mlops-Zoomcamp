@@ -2,6 +2,15 @@ FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
+# Install system dependencies and build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    libjpeg-dev \
+    zlib1g-dev \
+    libpng-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy only the necessary files for Streamlit
 COPY streamlit/requirements.txt requirements.txt
 COPY config/ config/
@@ -10,8 +19,8 @@ COPY streamlit/ streamlit/
 # Create a new conda environment
 RUN conda create -n streamlit_env python=3.12 -y
 
-# Activate the conda environment and install dependencies
-RUN /bin/bash -c "source activate streamlit_env && pip install -r requirements.txt"
+# Install dependencies using conda and pip
+RUN conda run -n streamlit_env pip install --no-cache-dir -r requirements.txt
 
 # Set environment variables
 ENV PYTHONPATH=/app
