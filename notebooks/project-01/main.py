@@ -1,12 +1,16 @@
 import os
 from typing import Dict, List, Tuple
 
+import boto3
 import mlflow
 import pandas as pd
+from dotenv import load_dotenv
+from evidently.metric_preset import (DataDriftPreset, DataQualityPreset,
+                                     TargetDriftPreset)
 from evidently.report import Report
-from evidently.metric_preset import DataDriftPreset, DataQualityPreset, TargetDriftPreset
+from evidently.test_preset import (DataQualityTestPreset,
+                                   DataStabilityTestPreset)
 from evidently.test_suite import TestSuite
-from evidently.test_preset import DataStabilityTestPreset, DataQualityTestPreset
 from evidently.tests import TestColumnDrift
 
 from src.data.data_loader import DataLoader
@@ -27,6 +31,34 @@ DATA_DIR = "./data/dataset_heart.csv"
 MODEL_DIR = "./models"
 CONFIG_PATH = "./config/model_params.yaml"
 EXPERIMENT_NAME = "Heart Disease Classification"
+S3_BUCKET_NAME = "heart-disease-models"
+
+
+load_dotenv()
+
+endpoint_url = os.getenv('AWS_ENDPOINT_URL')
+access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+region_name = os.getenv('AWS_REGION_NAME')
+
+
+s3_client = boto3.client(
+    's3',
+    endpoint_url=endpoint_url,
+    aws_access_key_id=access_key_id,
+    aws_secret_access_key=secret_access_key,
+    region_name=region_name
+)
+
+
+def upload_to_s3(file_path: str, object_name: str):
+    try:
+        s3_client.upload_file(file_path, S3_BUCKET_NAME, object_name)
+        print(f"Uploaded {file_path} to S3 bucket {S3_BUCKET_NAME}")
+    except Exception as e:
+        print(f"Error uploading to S3: {str(e)}")
+
+
 
 def load_and_preprocess_data(data_path: str, model_dir: str) -> Tuple[pd.DataFrame, pd.Series, List[str], List[str]]:
     # Load data
@@ -152,14 +184,26 @@ def run_experiment(data_dir: str, model_dir: str, config_path: str):
                 best_model = model
 
         # Save the best model
-    if best_model:
-        save_model(best_model, "best_model", MODEL_DIR)
-        mlflow.log_artifact(os.path.join(MODEL_DIR, "best_model.joblib"), "best_model")
-        mlflow.log_artifact(os.path.join(MODEL_DIR, "preprocessor.joblib"), "preprocessor")
-
+        if best_model:
+            best_model_path = os.path.join(MODEL_DIR, "best_model.joblib")
+            save_model(best_model, "best_model", MODEL_DIR)
+            mlflow.log_artifact(best_model_path, "best_model")
+            
+            # Upload best model to S3
+            upload_to_s3(best_model_path, "best_model.joblib")
+            
+            preprocessor_path = os.path.join(MODEL_DIR, "preprocessor.joblib")
+            mlflow.log_artifact(preprocessor_path, "preprocessor")
+            
+            # Upload preprocessor to S3
+            upload_to_s3(preprocessor_path, "preprocessor.joblib")
 
         # Create and log performance plot
-        create_performance_plot(results, f"{MODEL_DIR}/model_comparison.png")
+        performance_plot_path = f"{MODEL_DIR}/model_comparison.png"
+        create_performance_plot(results, performance_plot_path)
+        
+        # Upload performance plot to S3
+        upload_to_s3(performance_plot_path, "model_comparison.png")
 
 
 
@@ -201,6 +245,13 @@ def main():
     print("Starting Heart Disease Classification project...")
     
     os.makedirs(MODEL_DIR, exist_ok=True)
+    try:
+        s3_client.create_bucket(Bucket=S3_BUCKET_NAME)
+        print(f"Created S3 bucket: {S3_BUCKET_NAME}")
+    except s3_client.exceptions.BucketAlreadyExists:
+        print(f"S3 bucket already exists: {S3_BUCKET_NAME}")
+    except Exception as e:
+        print(f"Error creating S3 bucket: {str(e)}")
     
     run_experiment(DATA_DIR, MODEL_DIR, CONFIG_PATH)
     
