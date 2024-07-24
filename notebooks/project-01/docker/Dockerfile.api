@@ -1,17 +1,20 @@
-FROM python:3.12-slim
+FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
 # Copy only the necessary files for the API
-COPY pyproject.toml pyproject.toml
+COPY api/requirements.txt requirements.txt
 COPY config/ config/
-COPY src/ src/
 COPY api/ api/
 
-# Install dependencies
-RUN pip install poetry
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev
+# Create a new conda environment and install dependencies
+RUN conda create -n myenv python=3.12 -y
+RUN conda init bash
+RUN echo "conda activate myenv" >> ~/.bashrc
+SHELL ["/bin/bash", "-c", "source ~/.bashrc"]
+
+# Activate the environment and install dependencies
+RUN conda install -n myenv --file requirements.txt -y
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -20,5 +23,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Run the API
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+CMD ["conda", "run", "--no-capture-output", "-n", "myenv", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
