@@ -12,7 +12,9 @@ RUN conda create -n myenv python=3.12 -y
 RUN conda init bash
 RUN echo "conda activate myenv" >> ~/.bashrc
 SHELL ["/bin/bash", "-c", "source ~/.bashrc"]
-
+RUN conda activate myenv
+RUN conda install anaconda::boto3 -y
+RUN pip3 install --no-cache-dir boto3
 # Activate the environment and install dependencies
 RUN conda install -n myenv --file requirements.txt -y
 
@@ -27,5 +29,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the API
-CMD ["conda", "run", "--no-capture-output", "-n", "myenv", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/bash", "-c", "source ~/.bashrc && conda activate myenv && python api/main.py"]
 

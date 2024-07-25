@@ -11,6 +11,7 @@ networks:
 
 services:
   db:
+    container_name: heart-disease-postgres
     image: postgres:13
     restart: always
     environment:
@@ -28,6 +29,7 @@ services:
       retries: 5
 
   adminer:
+    container_name: heart-disease-adminer
     image: adminer
     restart: always
     ports:
@@ -39,6 +41,7 @@ services:
       - db
 
   grafana:
+    container_name: heart-disease-grafana
     image: grafana/grafana-enterprise
     user: "472"
     ports:
@@ -62,6 +65,7 @@ services:
       retries: 3
 
   localstack:
+    container_name: heart-disease-localstack
     image: localstack/localstack
     ports:
       - "4566:4566"
@@ -81,6 +85,7 @@ services:
       retries: 5
 
   mlflow:
+    container_name: heart-disease-mlflow
     image: ghcr.io/mlflow/mlflow
     ports:
       - "6060:6060"  # Changed from 5000 to 6060
@@ -99,6 +104,7 @@ services:
       retries: 3
 
   train:
+    container_name: heart-disease-train
     build:
       context: .
       dockerfile: ./docker/Dockerfile.train
@@ -113,6 +119,7 @@ services:
       - mlflow
 
   api:
+    container_name: heart-disease-api
     build:
       context: .
       dockerfile: ./docker/Dockerfile.api
@@ -136,6 +143,7 @@ services:
       retries: 3
 
   streamlit:
+    container_name: heart-disease-streamlit
     build:
       context: .
       dockerfile: ./docker/Dockerfile.streamlit
