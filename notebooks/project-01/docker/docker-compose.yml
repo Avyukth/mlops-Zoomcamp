@@ -4,6 +4,7 @@ volumes:
   grafana_data: {}
   models: {}
   mlflow_data: {}
+  localstack_data: {}
 
 networks:
   front-tier:
@@ -11,7 +12,7 @@ networks:
 
 services:
   db:
-    image: postgres
+    image: postgres:13
     restart: always
     environment:
       POSTGRES_PASSWORD: example
@@ -19,6 +20,11 @@ services:
       - "5432:5432"
     networks:
       - back-tier
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer
@@ -28,6 +34,8 @@ services:
     networks:
       - back-tier
       - front-tier
+    depends_on:
+      - db
 
   grafana:
     image: grafana/grafana-enterprise
@@ -43,6 +51,11 @@ services:
       - back-tier
       - front-tier
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O- http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   localstack:
     image: localstack/localstack
@@ -53,10 +66,15 @@ services:
       - SERVICES=s3
       - DEFAULT_REGION=us-east-1
     volumes:
-      - ./localstack:/var/lib/localstack
+      - localstack_data:/var/lib/localstack
     networks:
       - back-tier
       - front-tier
+    healthcheck:
+      test: ["CMD", "awslocal", "s3", "ls"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mlflow:
     image: mlflow:latest
@@ -69,6 +87,11 @@ services:
     networks:
       - back-tier
       - front-tier
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   train:
     build:
@@ -78,6 +101,10 @@ services:
       - ./models:/app/models
     networks:
       - back-tier
+    depends_on:
+      - db
+      - localstack
+      - mlflow
 
   api:
     build:
@@ -89,9 +116,17 @@ services:
       - ./models:/app/models
     depends_on:
       - train
+      - db
+      - localstack
+      - mlflow
     networks:
       - back-tier
       - front-tier
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   streamlit:
     build:
@@ -103,3 +138,8 @@ services:
       - api
     networks:
       - front-tier
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

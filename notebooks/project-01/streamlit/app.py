@@ -2,6 +2,14 @@ import pandas as pd
 import requests
 import streamlit as st
 from PIL import Image
+from streamlit.web.server.server import Server
+
+# Health check endpoint
+def healthz():
+    return {"status": "ok"}
+
+# Register the health check endpoint
+Server.get_current().add_route("/healthz", healthz, methods=["GET"])
 
 st.set_page_config(layout="wide")
 

@@ -136,6 +136,19 @@ async def predict_heart_disease(input: HeartDiseaseInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/health")
+async def health_check():
+    try:
+        # Check if model and preprocessor are loaded
+        if model is not None and feature_preprocessor is not None:
+            return {"status": "healthy", "message": "Model and preprocessor are loaded"}
+        else:
+            raise HTTPException(status_code=503, detail="Model or preprocessor not loaded")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
+
+
+
 if __name__ == "__main__":
     import uvicorn
 
