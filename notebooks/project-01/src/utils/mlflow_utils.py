@@ -109,6 +109,10 @@ class MLflowUtils:
         Returns:
             mlflow.ActiveRun: The active MLflow run
         """
+        active_run = mlflow.active_run()
+        if active_run is not None:
+            print(f"Ending active run: {active_run.info.run_id}")
+            mlflow.end_run()
         return mlflow.start_run()
 
     def end_run(self):
