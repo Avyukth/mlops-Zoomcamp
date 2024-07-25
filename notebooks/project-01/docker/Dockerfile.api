@@ -7,16 +7,12 @@ COPY api/requirements.txt requirements.txt
 COPY config/ config/
 COPY api/ api/
 
-# Create a new conda environment and install dependencies
-RUN conda create -n myenv python=3.12 -y
-RUN conda init bash
-RUN echo "conda activate myenv" >> ~/.bashrc
-SHELL ["/bin/bash", "-c", "source ~/.bashrc"]
-RUN conda activate myenv
-RUN conda install anaconda::boto3 -y
-RUN pip3 install --no-cache-dir boto3
-# Activate the environment and install dependencies
-RUN conda install -n myenv --file requirements.txt -y
+# Create a new conda environment, install dependencies, and clean up
+RUN conda create -n myenv python=3.12 -y && \
+    . /opt/conda/etc/profile.d/conda.sh && \
+    conda activate myenv && \
+    pip install --no-cache-dir -r requirements.txt && \
+    conda clean -a -y
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -29,5 +25,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the API
-CMD ["/bin/bash", "-c", "source ~/.bashrc && conda activate myenv && python api/main.py"]
-
+CMD ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate myenv && python api/main.py"]
