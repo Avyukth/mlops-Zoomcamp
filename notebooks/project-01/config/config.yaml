@@ -7,7 +7,7 @@ experiment_name: "Heart Disease Classification"
 # AWS/LocalStack Settings
 s3:
   bucket_name: "heart-disease-models"
-  endpoint_url: "http://localhost:4566"  # LocalStack default endpoint
+  endpoint_url: "http://heart-disease-localstack:4566"  # LocalStack default endpoint
   access_key_id: "test"
   secret_access_key: "test"
   region_name: "us-east-1"
