@@ -3,7 +3,8 @@ volumes:
   models: {}
   mlflow_data: {}
   localstack_data: {}
-  postgres_data: {}  # Added for database persistence
+  postgres_data: {}
+  mlflow_db_data: {}
 
 networks:
   front-tier:
@@ -91,9 +92,10 @@ services:
       - "6060:6060"  # Changed from 5000 to 6060
     volumes:
       - mlflow_data:/mlflow
+      - mlflow_db_data:/data
     environment:
-      MLFLOW_TRACKING_URI: "http://mlflow:6060"  # Updated to use port 6060
-    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "6060"]  # Added command to specify port
+      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"  # Updated to use port 6060
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "6060", "--backend-store-uri", "sqlite:////data/mlflow.db"]  # Added command to specify port
     networks:
       - back-tier
       - front-tier
@@ -111,6 +113,9 @@ services:
     image: heart-disease-train:latest
     volumes:
       - ./models:/app/models
+      - mlflow_db_data:/data  # Mount the shared volume
+    environment:
+      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"
     networks:
       - back-tier
     depends_on:
