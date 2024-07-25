@@ -7,7 +7,7 @@ experiment_name: "Heart Disease Classification"
 # AWS/LocalStack Settings
 s3:
   bucket_name: "heart-disease-models"
-  endpoint_url: "http://heart-disease-localstack:4566"  # LocalStack default endpoint
+  endpoint_url: "http://heart-disease-localstack:4566" # LocalStack default endpoint
   access_key_id: "test"
   secret_access_key: "test"
   region_name: "us-east-1"
@@ -15,6 +15,7 @@ s3:
 # MLflow Settings
 mlflow:
   tracking_uri: "sqlite:////data/mlflow.db"
+  default_artifact_root: "file:///app/mlruns"
 
 # Model Training Settings
 train_test_split:
@@ -31,23 +32,23 @@ DATA:
 MODEL_PARAMS:
   logistic_regression:
     C: 1.0
-    penalty: 'l2'
-    solver: 'liblinear'
+    penalty: "l2"
+    solver: "liblinear"
     max_iter: 1000
 
   svm:
     C: 1.0
-    kernel: 'rbf'
+    kernel: "rbf"
     probability: true
 
   knn:
     n_neighbors: 5
-    weights: 'uniform'
+    weights: "uniform"
 
   mlp:
     hidden_layer_sizes: [100, 50]
-    activation: 'relu'
-    solver: 'adam'
+    activation: "relu"
+    solver: "adam"
     max_iter: 1000
 
   random_forest:
@@ -66,7 +67,7 @@ MODEL_PARAMS:
     iterations: 100
     depth: 6
     learning_rate: 0.1
-    loss_function: 'Logloss'
+    loss_function: "Logloss"
 
   lgbm:
     num_leaves: 31
@@ -78,4 +79,4 @@ MODEL_PARAMS:
     max_depth: 6
     learning_rate: 0.1
     n_estimators: 100
-    objective: 'binary:logistic'
+    objective: "binary:logistic"

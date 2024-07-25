@@ -1,10 +1,14 @@
 volumes:
   grafana_data: {}
   models: {}
-  mlflow_data: {}
+  mlflow_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/mlflow_data
   localstack_data: {}
   postgres_data: {}
-  mlflow_db_data: {}
 
 networks:
   front-tier:
@@ -20,7 +24,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Added for data persistence
+      - postgres_data:/var/lib/postgresql/data # Added for data persistence
     networks:
       - back-tier
     healthcheck:
@@ -60,7 +64,8 @@ services:
       - front-tier
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --tries=1 -O- http://localhost:3000/api/health"]
+      test:
+        ["CMD-SHELL", "wget -q --tries=1 -O- http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -89,18 +94,29 @@ services:
     container_name: heart-disease-mlflow
     image: ghcr.io/mlflow/mlflow
     ports:
-      - "6060:6060"  # Changed from 5000 to 6060
+      - "6060:6060" # Changed from 5000 to 6060
     volumes:
-      - mlflow_data:/mlflow
-      - mlflow_db_data:/data
+      - ./mlruns:/mlflow/mlruns
+      - ./mlflow_data:/data
     environment:
-      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"  # Updated to use port 6060
-    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "6060", "--backend-store-uri", "sqlite:////data/mlflow.db"]  # Added command to specify port
+      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db" # Updated to use port 6060
+    command: [
+        "mlflow",
+        "server",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "6060",
+        "--backend-store-uri",
+        "sqlite:////data/mlflow.db",
+        "--default-artifact-root",
+        "/mlflow/mlruns"
+      ] # Added command to specify port
     networks:
       - back-tier
       - front-tier
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6060/health"]  # Updated health check port
+      test: ["CMD", "curl", "-f", "http://localhost:6060/health"] # Updated health check port
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,7 +129,8 @@ services:
     image: heart-disease-train:latest
     volumes:
       - ./models:/app/models
-      - mlflow_db_data:/data  # Mount the shared volume
+      - ./mlflow_data:/data
+      - ./mlruns:/app/mlruns
     environment:
       MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"
     networks:

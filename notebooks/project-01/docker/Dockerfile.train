@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -m -u 1000 appuser
 # Copy only necessary files
 COPY requirements.txt .
 COPY config/ ./config/
@@ -17,12 +18,14 @@ COPY main.py .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN mkdir -p /data /app/mlruns /app/models && chmod 777 /data /app/mlruns /app/models
-USER 1000
+RUN mkdir -p /data /app/mlruns /app/models && \
+    chown -R appuser:appuser /app /data && \
+    chmod 777 /data /app/mlruns /app/models
 # Set environment variables
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
+USER appuser
 
 # Run the main script
 CMD ["python", "main.py"]

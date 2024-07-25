@@ -1,6 +1,9 @@
+import os
+from typing import Any, Dict, Optional
+
 import mlflow
 from mlflow.tracking import MlflowClient
-from typing import Dict, Any
+
 
 class MLflowUtils:
     def __init__(self, config: Dict[str, Any]):
@@ -11,10 +14,13 @@ class MLflowUtils:
             config (Dict[str, Any]): Configuration dictionary containing MLflow settings.
         """
         self.config = config
-        self.tracking_uri = config['mlflow']['tracking_uri']
-        self.experiment_name = config['experiment_name']
+        self.tracking_uri = config["mlflow"]["tracking_uri"]
+        self.experiment_name = config["experiment_name"]
         self.client = None
         self.experiment = None
+        self.default_artifact_root = config["mlflow"].get(
+            "default_artifact_root", "file:///app/mlruns"
+        )
 
     def setup_mlflow(self) -> str:
         """
@@ -24,9 +30,21 @@ class MLflowUtils:
             str: Experiment ID
         """
         mlflow.set_tracking_uri(self.tracking_uri)
-        mlflow.set_experiment(self.experiment_name)
         self.client = MlflowClient()
+
+        # Check if experiment exists, create if it doesn't
         self.experiment = self.client.get_experiment_by_name(self.experiment_name)
+        if not self.experiment:
+            experiment_id = self.client.create_experiment(
+                name=self.experiment_name, artifact_location=self.default_artifact_root
+            )
+            self.experiment = self.client.get_experiment(experiment_id)
+
+        mlflow.set_experiment(self.experiment_name)
+
+        print(f"MLflow tracking URI: {mlflow.get_tracking_uri()}")
+        print(f"MLflow artifact URI: {mlflow.get_artifact_uri()}")
+
         return self.experiment.experiment_id
 
     def log_model_params(self, model: Any):
@@ -60,7 +78,7 @@ class MLflowUtils:
         """
         mlflow.log_metric(key, value)
 
-    def log_artifact(self, local_path: str, artifact_path: str = None):
+    def log_artifact(self, local_path: str, artifact_path: Optional[str] = None):
         """
         Log an artifact to MLflow.
 
