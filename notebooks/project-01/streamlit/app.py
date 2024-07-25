@@ -51,8 +51,8 @@ with col1:
 with col2:
     st.write("")
     st.write("")
-    green_image = Image.open("./streamlit/artifacts/green.webp")
-    red_image = Image.open("./streamlit/artifacts/red.webp")
+    green_image = Image.open("./streamlit/artifacts/green.png")
+    red_image = Image.open("./streamlit/artifacts/red.png")
     
     # Create a container for vertical centering
     with st.container():
