@@ -6,21 +6,20 @@ from mlflow.tracking import MlflowClient
 
 
 class MLflowUtils:
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Config):
         """
         Initialize MLflowUtils with configuration.
 
         Args:
-            config (Dict[str, Any]): Configuration dictionary containing MLflow settings.
+            config (Config): Configuration object containing MLflow settings.
         """
         self.config = config
-        self.tracking_uri = config["mlflow"]["tracking_uri"]
-        self.experiment_name = config["experiment_name"]
+        self.tracking_uri = config['MLFLOW_TRACKING_URI']
+        self.experiment_name = config['app']['experiment_name']
         self.client = None
         self.experiment = None
-        self.default_artifact_root = config["mlflow"].get(
-            "default_artifact_root", "file:///app/mlruns"
-        )
+        self.default_artifact_root = config.get('MLFLOW_DEFAULT_ARTIFACT_ROOT', 'file:///app/mlruns')
+
 
     def setup_mlflow(self) -> str:
         """

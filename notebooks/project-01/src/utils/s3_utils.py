@@ -4,22 +4,23 @@ from botocore.exceptions import ClientError
 from typing import Dict
 
 class S3Utils:
-    def __init__(self, config: Dict):
+    def __init__(self, config: Config):
         """
         Initialize the S3Utils with configuration.
 
         Args:
-            config (Dict): Configuration dictionary containing S3 settings.
+            config (Config): Configuration object containing S3 settings.
         """
         self.config = config
-        self.bucket_name = config['s3']['bucket_name']
+        self.bucket_name = config['S3_BUCKET_NAME']
         self.client = boto3.client(
             's3',
-            endpoint_url=config['s3']['endpoint_url'],
-            aws_access_key_id=config['s3']['access_key_id'],
-            aws_secret_access_key=config['s3']['secret_access_key'],
-            region_name=config['s3']['region_name']
+            endpoint_url=config['S3_ENDPOINT_URL'],
+            aws_access_key_id=config['S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=config['S3_SECRET_ACCESS_KEY'],
+            region_name=config['S3_REGION_NAME']
         )
+
 
     def create_bucket(self):
         """

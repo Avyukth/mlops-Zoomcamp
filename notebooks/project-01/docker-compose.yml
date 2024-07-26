@@ -38,8 +38,8 @@ services:
     volumes:
       - minio_data:/data
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -57,11 +57,13 @@ services:
     volumes:
       - ./mlruns:/mlflow/mlruns
       - ./mlflow_data:/data
+      - ./config.toml:/app/config.toml:ro
     environment:
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - MLFLOW_S3_IGNORE_TLS=true
+      - MLFLOW_S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=${MLFLOW_DEFAULT_ARTIFACT_ROOT}
     depends_on:
       - minio
 
@@ -74,12 +76,14 @@ services:
       - ./models:/app/models
       - ./mlflow_data:/data
       - ./mlruns:/app/mlruns
+      - ./config.toml:/app/config.toml:ro
     environment:
-      - S3_BUCKET_NAME=${MINIO_BUCKET_NAME}
-      - S3_ENDPOINT_URL=http://minio:9000
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${S3_REGION_NAME}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
     depends_on:
       - minio
       - mlflow
@@ -93,12 +97,14 @@ services:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./models:/app/models
+      - ./config.toml:/app/config.toml:ro
     environment:
-      - S3_BUCKET_NAME=${MINIO_BUCKET_NAME}
-      - S3_ENDPOINT_URL=http://minio:9000
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${S3_REGION_NAME}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
     depends_on:
       - db
       - minio
@@ -116,6 +122,8 @@ services:
     image: ${DOCKER_REGISTRY:-localhost}/heart-disease-streamlit:${IMAGE_TAG:-latest}
     ports:
       - "${STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - ./config.toml:/app/config.toml:ro
     environment:
       - API_URL=http://api:8000
     depends_on:

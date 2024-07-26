@@ -29,12 +29,12 @@ with open(config_path, "r") as config_file:
 
 # Initialize S3 client
 s3_client = boto3.client(
-            's3',
-            endpoint_url=config['s3']['endpoint_url'],
-            aws_access_key_id=config['s3']['access_key_id'],
-            aws_secret_access_key=config['s3']['secret_access_key'],
-            region_name=config['s3']['region_name']
-        )
+    "s3",
+    endpoint_url=config["s3"]["endpoint_url"],
+    aws_access_key_id=config["s3"]["access_key_id"],
+    aws_secret_access_key=config["s3"]["secret_access_key"],
+    region_name=config["s3"]["region_name"],
+)
 
 
 # Function to load model or preprocessor from S3
@@ -143,12 +143,14 @@ async def health_check():
         if model is not None and feature_preprocessor is not None:
             return {"status": "healthy", "message": "Model and preprocessor are loaded"}
         else:
-            raise HTTPException(status_code=503, detail="Model or preprocessor not loaded")
+            raise HTTPException(
+                status_code=503, detail="Model or preprocessor not loaded"
+            )
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
 
 
-
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

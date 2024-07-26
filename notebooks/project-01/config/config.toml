@@ -5,7 +5,6 @@ experiment_name = "Heart Disease Classification"
 [paths]
 data_dir = "./data/dataset_heart.csv"
 model_dir = "./models"
-model_params_path = "./config/model_params.yaml"
 
 # Model Training Settings
 [train_test_split]
