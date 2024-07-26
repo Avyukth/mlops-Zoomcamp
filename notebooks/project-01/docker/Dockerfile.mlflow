@@ -1,0 +1,18 @@
+FROM ghcr.io/mlflow/mlflow:latest
+
+USER root
+
+# Install curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+RUN useradd -m -u 1000 mlflow
+
+# Set ownership and permissions
+RUN mkdir -p /mlflow/mlruns /data && \
+    chown -R mlflow:mlflow /mlflow /data && \
+    chmod 777 /mlflow /data
+
+# Switch to non-root user
+USER mlflow
+

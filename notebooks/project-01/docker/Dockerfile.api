@@ -7,6 +7,7 @@ WORKDIR /app
 # Install system dependencies and clean up in one layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only necessary files
