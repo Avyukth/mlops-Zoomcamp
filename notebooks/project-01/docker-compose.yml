@@ -1,88 +1,137 @@
 services:
-  
   db:
-    container_name: heart-disease-postgres
-    image: postgres:13
+    image: postgres:${POSTGRES_VERSION:-13}
     environment:
-      POSTGRES_PASSWORD: example
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
-    container_name: heart-disease-adminer
     image: adminer
     ports:
-      - "8080:8080"
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - db
 
   grafana:
-    container_name: heart-disease-grafana
-    image: grafana/grafana-enterprise
+    image: grafana/grafana-enterprise:${GRAFANA_VERSION:-latest}
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana-config:/etc/grafana/provisioning
-
-  localstack:
-    container_name: heart-disease-localstack
-    image: localstack/localstack
-    ports:
-      - "4566:4566"
     environment:
-      - SERVICES=s3
-      - DEFAULT_REGION=us-east-1
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+
+  minio:
+    image: minio/minio:${MINIO_VERSION:-latest}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   mlflow:
-    container_name: heart-disease-mlflow
     build:
       context: .
       dockerfile: ./docker/Dockerfile.mlflow
-    image: heart-disease-mlflow:latest
+    image: ${DOCKER_REGISTRY:-localhost}/heart-disease-mlflow:${IMAGE_TAG:-latest}
     ports:
-      - "6060:6060"
+      - "${MLFLOW_PORT:-5000}:5000"
     volumes:
       - ./mlruns:/mlflow/mlruns
       - ./mlflow_data:/data
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - MLFLOW_S3_IGNORE_TLS=true
+    depends_on:
+      - minio
 
   train:
-    container_name: heart-disease-train
     build:
       context: .
       dockerfile: ./docker/Dockerfile.train
-    image: heart-disease-train:latest
+    image: ${DOCKER_REGISTRY:-localhost}/heart-disease-train:${IMAGE_TAG:-latest}
     volumes:
       - ./models:/app/models
       - ./mlflow_data:/data
       - ./mlruns:/app/mlruns
+    environment:
+      - S3_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    depends_on:
+      - minio
+      - mlflow
 
   api:
-    container_name: heart-disease-api
     build:
       context: .
       dockerfile: ./docker/Dockerfile.api
-    image: heart-disease-api:latest
+    image: ${DOCKER_REGISTRY:-localhost}/heart-disease-api:${IMAGE_TAG:-latest}
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     volumes:
       - ./models:/app/models
+    environment:
+      - S3_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    depends_on:
+      - db
+      - minio
+      - train
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   streamlit:
-    container_name: heart-disease-streamlit
     build:
       context: .
       dockerfile: ./docker/Dockerfile.streamlit
-    image: heart-disease-streamlit:latest
+    image: ${DOCKER_REGISTRY:-localhost}/heart-disease-streamlit:${IMAGE_TAG:-latest}
     ports:
-      - "8501:8501"
+      - "${STREAMLIT_PORT:-8501}:8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:
   grafana_data:
   models:
   mlflow_data:
-  localstack_data:
+  minio_data:
 
 networks:
   default:
