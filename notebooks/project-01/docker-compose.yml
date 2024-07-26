@@ -1,190 +1,78 @@
-volumes:
-  grafana_data: {}
-  models: {}
-  mlflow_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/mlflow_data
-  localstack_data: {}
-  postgres_data: {}
-
-networks:
-  back-tier:
-      driver: bridge
-      driver_opts:
-        com.docker.network.enable_icc: "true"
+version: '3.8'
 
 services:
   db:
-    container_name: heart-disease-postgres
     image: postgres:13
-    restart: always
     environment:
       POSTGRES_PASSWORD: example
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - back-tier
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   adminer:
-    container_name: heart-disease-adminer
     image: adminer
-    restart: always
     ports:
       - "8080:8080"
-    networks:
-      - back-tier
-    depends_on:
-      - db
 
   grafana:
-    container_name: heart-disease-grafana
     image: grafana/grafana-enterprise
-    user: "472"
     ports:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana-config/config/grafana_datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
-      - ./grafana-config/config/grafana_dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
-      - ./grafana-config/dashboards:/var/lib/grafana/dashboards
-    environment:
-      - GF_INSTALL_PLUGINS=grafana-clock-panel
-      - GF_ANGULAR_SUPPORT_ENABLED=false
-    networks:
-      - back-tier
-    restart: always
-    healthcheck:
-      test:
-        ["CMD-SHELL", "wget -q --tries=1 -O- http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ./grafana-config:/etc/grafana/provisioning
 
   localstack:
-    container_name: heart-disease-localstack
     image: localstack/localstack
     ports:
       - "4566:4566"
-      - "4571:4571"
     environment:
       - SERVICES=s3
       - DEFAULT_REGION=us-east-1
-    volumes:
-      - localstack_data:/var/lib/localstack
-    networks:
-      - back-tier
-    healthcheck:
-      test: ["CMD", "awslocal", "s3", "ls"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   mlflow:
-    container_name: heart-disease-mlflow
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.mlflow
-    image: heart-disease-mlflow:latest
+      dockerfile: Dockerfile.mlflow
     ports:
       - "6060:6060"
     volumes:
       - ./mlruns:/mlflow/mlruns
       - ./mlflow_data:/data
-    environment:
-      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"
-    command: [
-        "mlflow",
-        "server",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "6060",
-        "--backend-store-uri",
-        "sqlite:////data/mlflow.db",
-        "--default-artifact-root",
-        "/mlflow/mlruns"
-    ]
-    user: "1000:1000"
-    networks:
-      - back-tier
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6060/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   train:
-    container_name: heart-disease-train
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.train
-    image: heart-disease-train:latest
+      dockerfile: Dockerfile.train
     volumes:
       - ./models:/app/models
       - ./mlflow_data:/data
       - ./mlruns:/app/mlruns
-    environment:
-      MLFLOW_TRACKING_URI: "sqlite:////data/mlflow.db"
-    networks:
-      - back-tier
-    depends_on:
-      - db
-      - localstack
-      - mlflow
 
   api:
-    container_name: heart-disease-api
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.api
-    image: heart-disease-api:latest
+      dockerfile: Dockerfile.api
     ports:
       - "8000:8000"
     volumes:
       - ./models:/app/models
-    depends_on:
-      localstack:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-      train:
-        condition: service_completed_successfully
-      mlflow:
-        condition: service_healthy
-    networks:
-      - back-tier
-    environment:
-      - S3_ENDPOINT_URL=http://heart-disease-localstack:4566
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   streamlit:
-    container_name: heart-disease-streamlit
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.streamlit
-    image: heart-disease-streamlit:latest
+      dockerfile: Dockerfile.streamlit
     ports:
       - "8501:8501"
-    depends_on:
-      - api
-    networks:
-      - back-tier
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
+volumes:
+  postgres_data:
+  grafana_data:
+  models:
+  mlflow_data:
+  localstack_data:
+
+networks:
+  default:
+    driver: bridge
