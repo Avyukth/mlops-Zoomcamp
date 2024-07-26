@@ -1,46 +1,36 @@
-import os
 import sys
 from pathlib import Path
 
 # Add the project root to the Python path
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent
 sys.path.append(str(project_root))
 
 import logging
 from io import BytesIO
 
+from config import Config, S3Utils
 import boto3
 import joblib
 import pandas as pd
-import yaml
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+config = Config()
+print(config)
+s3_utils = S3Utils(config)
 app = FastAPI()
 
-# Load configuration
-config_path = project_root / "config" / "config.yaml"
-with open(config_path, "r") as config_file:
-    config = yaml.safe_load(config_file)
 
-# Initialize S3 client
-s3_client = boto3.client(
-    "s3",
-    endpoint_url=config["s3"]["endpoint_url"],
-    aws_access_key_id=config["s3"]["access_key_id"],
-    aws_secret_access_key=config["s3"]["secret_access_key"],
-    region_name=config["s3"]["region_name"],
-)
+# Load configuration
 
 
 # Function to load model or preprocessor from S3
 def load_from_s3(bucket, key):
     try:
-        response = s3_client.get_object(Bucket=bucket, Key=key)
+        response = s3_utils.get_object(Bucket=bucket, Key=key)
         body = response["Body"].read()
         return joblib.load(BytesIO(body))
     except ClientError as e:

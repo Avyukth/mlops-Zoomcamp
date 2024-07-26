@@ -78,7 +78,7 @@ def run_experiment():
 def main():
     print("Starting Heart Disease Classification project...")
     
-    os.makedirs(config.MODEL_DIR, exist_ok=True)
+    os.makedirs(config.PATHS['model_dir'], exist_ok=True)
     s3_utils.create_bucket()
     
     mlflow_utils.setup_mlflow()

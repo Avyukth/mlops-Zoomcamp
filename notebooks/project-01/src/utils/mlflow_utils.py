@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import mlflow
 from mlflow.tracking import MlflowClient
+from src.config import Config
 
 
 class MLflowUtils:

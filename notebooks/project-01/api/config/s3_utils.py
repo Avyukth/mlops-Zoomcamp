@@ -2,7 +2,6 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 from typing import Dict
-from src.config import Config
 
 class S3Utils:
     def __init__(self, config: Config):
@@ -21,8 +20,6 @@ class S3Utils:
             aws_secret_access_key=config['S3_SECRET_ACCESS_KEY'],
             region_name=config['S3_REGION_NAME']
         )
-        self.client.list_buckets()
-        print("Successfully connected to MinIO")
 
 
     def create_bucket(self):
