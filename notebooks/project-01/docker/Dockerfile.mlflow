@@ -2,8 +2,8 @@ FROM ghcr.io/mlflow/mlflow:latest
 
 USER root
 
-# Install curl
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl and sqlite3
+RUN apt-get update && apt-get install -y curl sqlite3 && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN useradd -m -u 1000 mlflow
@@ -15,4 +15,15 @@ RUN mkdir -p /mlflow/mlruns /data && \
 
 # Switch to non-root user
 USER mlflow
+
+# Create a startup script
+RUN echo '#!/bin/bash\n\
+    mlflow db upgrade sqlite:////data/mlflow.db\n\
+    mlflow server \
+    --host 0.0.0.0 \
+    --port 6060 \
+    --backend-store-uri sqlite:////data/mlflow.db \
+    --default-artifact-root /mlflow/mlruns \
+    "$@"' > /mlflow/start.sh && \
+    chmod +x /mlflow/start.sh
 

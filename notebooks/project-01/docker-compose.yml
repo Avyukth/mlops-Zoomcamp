@@ -11,8 +11,10 @@ volumes:
   postgres_data: {}
 
 networks:
-  front-tier:
   back-tier:
+      driver: bridge
+      driver_opts:
+        com.docker.network.enable_icc: "true"
 
 services:
   db:
@@ -24,7 +26,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Added for data persistence
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - back-tier
     healthcheck:
@@ -41,7 +43,6 @@ services:
       - "8080:8080"
     networks:
       - back-tier
-      - front-tier
     depends_on:
       - db
 
@@ -61,7 +62,6 @@ services:
       - GF_ANGULAR_SUPPORT_ENABLED=false
     networks:
       - back-tier
-      - front-tier
     restart: always
     healthcheck:
       test:
@@ -83,7 +83,6 @@ services:
       - localstack_data:/var/lib/localstack
     networks:
       - back-tier
-      - front-tier
     healthcheck:
       test: ["CMD", "awslocal", "s3", "ls"]
       interval: 10s
@@ -118,13 +117,11 @@ services:
     user: "1000:1000"
     networks:
       - back-tier
-      - front-tier
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6060/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-
 
   train:
     container_name: heart-disease-train
@@ -166,7 +163,6 @@ services:
         condition: service_healthy
     networks:
       - back-tier
-      - front-tier
     environment:
       - S3_ENDPOINT_URL=http://heart-disease-localstack:4566
     healthcheck:
@@ -186,7 +182,7 @@ services:
     depends_on:
       - api
     networks:
-      - front-tier
+      - back-tier
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
       interval: 30s
