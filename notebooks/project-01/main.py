@@ -1,10 +1,9 @@
 import os
 from typing import Dict, List, Tuple
+
 import boto3
 import mlflow
 import pandas as pd
-
-
 from src.config import Config
 from src.data.data_manager import DataManager
 from src.evaluation.evaluator import Evaluator
@@ -21,10 +20,11 @@ print(config)
 s3_utils = S3Utils(config)
 mlflow_utils = MLflowUtils(config)
 
+
 def run_experiment():
-    print(f"Model directory: {config.MODEL['dir']}")
-    print(f"Model version: {config.MODEL['version']}")
-    print(f"Data version: {config.DATA['version']}")
+    # print(f"Model directory: {config.MODEL['dir']}")
+    # print(f"Model version: {config.MODEL['version']}")
+    # print(f"Data version: {config.DATA['version']}")
 
     with mlflow_utils.start_run():
         # Data preparation
@@ -34,7 +34,9 @@ def run_experiment():
 
         # Generate reports
         evidently_reporter = EvidentlyReporter(config)
-        report_path, test_suite_path = evidently_reporter.generate_reports(x_train, y_train, x_test, y_test)
+        report_path, test_suite_path = evidently_reporter.generate_reports(
+            x_train, y_train, x_test, y_test
+        )
         mlflow_utils.log_artifact(report_path, "evidently_reports")
         mlflow_utils.log_artifact(test_suite_path, "evidently_reports")
 
@@ -47,12 +49,16 @@ def run_experiment():
 
         # Create ensemble models
         ensemble_creator = EnsembleCreator(config)
-        ensemble_models = ensemble_creator.create_ensemble_models(models, x_train, y_train)
+        ensemble_models = ensemble_creator.create_ensemble_models(
+            models, x_train, y_train
+        )
         models.update(ensemble_models)
 
         # Evaluate models
         evaluator = Evaluator(config)
-        results, best_model = evaluator.evaluate_models(models, x_train, y_train, x_test, y_test)
+        results, best_model = evaluator.evaluate_models(
+            models, x_train, y_train, x_test, y_test
+        )
 
         # Log model results
         for name, result in results.items():
@@ -64,7 +70,7 @@ def run_experiment():
         if best_model:
             best_model_path = evaluator.save_best_model(best_model)
             mlflow_utils.log_artifact(best_model_path, "best_model")
-            s3_utils.upload_model_artifacts(config.MODEL_DIR)
+            s3_utils.upload_model_artifacts(config.PATHS["model_dir"])
 
         # Create and upload performance plot
         performance_plot_path = evaluator.create_performance_plot(results)
@@ -72,19 +78,21 @@ def run_experiment():
         s3_utils.upload_performance_plot(performance_plot_path)
 
         # Set tags for the run
-        mlflow_utils.set_tag("model_version", config.MODEL['version'])
-        mlflow_utils.set_tag("data_version", config.DATA['version'])
+        mlflow_utils.set_tag("model_version", config.VERSIONS["model"])
+        mlflow_utils.set_tag("data_version", config.VERSIONS["data"])
+
 
 def main():
     print("Starting Heart Disease Classification project...")
-    
-    os.makedirs(config.PATHS['model_dir'], exist_ok=True)
+
+    os.makedirs(config.PATHS["model_dir"], exist_ok=True)
     s3_utils.create_bucket()
-    
+
     mlflow_utils.setup_mlflow()
     run_experiment()
-    
+
     print("Heart Disease Classification project completed.")
+
 
 if __name__ == "__main__":
     main()

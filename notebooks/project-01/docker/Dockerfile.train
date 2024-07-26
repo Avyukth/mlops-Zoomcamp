@@ -19,7 +19,7 @@ COPY .env .env
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /data /app/mlruns /app/models && \
     chown -R appuser:appuser /app /data && \
-    chmod 777 /data /app/mlruns /app/models
+    chmod 777 /data /app/mlruns /app/models /app/evidently_reports
 
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \

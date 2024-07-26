@@ -4,6 +4,7 @@ experiment_name = "Heart Disease Classification"
 [paths]
 data_dir = "./data/dataset_heart.csv"
 model_dir = "./models"
+reports_dir = "./evidently_reports"
 
 [train_test_split]
 test_size = 0.2
