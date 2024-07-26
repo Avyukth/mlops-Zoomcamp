@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only the necessary files for Streamlit
@@ -23,7 +24,7 @@ RUN conda create -n streamlit_env python=3.12 -y && \
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV PATH /opt/conda/envs/streamlit_env/bin:$PATH
+ENV PATH=/opt/conda/envs/streamlit_env/bin:$PATH
 
 # Expose the port Streamlit runs on
 EXPOSE 8501

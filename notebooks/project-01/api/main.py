@@ -29,12 +29,12 @@ with open(config_path, "r") as config_file:
 
 # Initialize S3 client
 s3_client = boto3.client(
-    "s3",
-    endpoint_url=config["s3"]["endpoint_url"],
-    aws_access_key_id=config["s3"]["access_key_id"],
-    aws_secret_access_key=config["s3"]["secret_access_key"],
-    region_name=config["s3"]["region_name"],
-)
+            's3',
+            endpoint_url=config['s3']['endpoint_url'],
+            aws_access_key_id=config['s3']['access_key_id'],
+            aws_secret_access_key=config['s3']['secret_access_key'],
+            region_name=config['s3']['region_name']
+        )
 
 
 # Function to load model or preprocessor from S3

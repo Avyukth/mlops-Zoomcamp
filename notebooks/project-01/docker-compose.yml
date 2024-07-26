@@ -167,6 +167,8 @@ services:
     networks:
       - back-tier
       - front-tier
+    environment:
+      - S3_ENDPOINT_URL=http://heart-disease-localstack:4566
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
