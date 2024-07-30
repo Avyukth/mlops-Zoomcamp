@@ -16,7 +16,7 @@ class MLflowUtils:
         """
         self.config = config
         self.tracking_uri = config['MLFLOW_TRACKING_URI']
-        self.experiment_name = config['app']['experiment_name']
+        self.experiment_name = config.APP['experiment_name']
         self.client = None
         self.experiment = None
         self.default_artifact_root = config.get('MLFLOW_DEFAULT_ARTIFACT_ROOT', 'file:///app/mlruns')
