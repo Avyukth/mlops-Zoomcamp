@@ -1,7 +1,14 @@
+import logging
 import os
+from typing import Dict
+
 import boto3
 from botocore.exceptions import ClientError
-from typing import Dict
+from config import Config
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class S3Utils:
     def __init__(self, config: Config):
@@ -12,15 +19,15 @@ class S3Utils:
             config (Config): Configuration object containing S3 settings.
         """
         self.config = config
-        self.bucket_name = config['S3_BUCKET_NAME']
+        self.bucket_name = config["S3_BUCKET_NAME"]
         self.client = boto3.client(
-            's3',
-            endpoint_url=config['S3_ENDPOINT_URL'],
-            aws_access_key_id=config['S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=config['S3_SECRET_ACCESS_KEY'],
-            region_name=config['S3_REGION_NAME']
-        )
+            "s3",
+            endpoint_url=config["S3_ENDPOINT_URL"],
+            aws_access_key_id=config["S3_ACCESS_KEY_ID"],
+            aws_secret_access_key=config["S3_SECRET_ACCESS_KEY"],
+            region_name=config["S3_REGION_NAME"],
 
+        )
 
     def create_bucket(self):
         """
@@ -30,8 +37,8 @@ class S3Utils:
             self.client.create_bucket(Bucket=self.bucket_name)
             print(f"Created S3 bucket: {self.bucket_name}")
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'BucketAlreadyOwnedByYou':
+            error_code = e.response["Error"]["Code"]
+            if error_code == "BucketAlreadyOwnedByYou":
                 print(f"S3 bucket already exists: {self.bucket_name}")
             else:
                 print(f"Error creating S3 bucket: {str(e)}")
@@ -54,35 +61,25 @@ class S3Utils:
             print(f"Error uploading to S3: {str(e)}")
 
     def download_file(self, object_name: str, file_path: str):
-        """
-        Download a file from the S3 bucket.
-
-        Args:
-            object_name (str): Name of the object to download.
-            file_path (str): Path where the file should be saved.
-        """
         try:
+            logger.debug(f"Attempting to download {object_name} to {file_path}")
+            logger.debug(f"Using endpoint: {self.client.meta.endpoint_url}")
             self.client.download_file(self.bucket_name, object_name, file_path)
-            print(f"Downloaded {object_name} from S3 bucket {self.bucket_name}")
+            logger.debug(f"Downloaded {object_name} from S3 bucket {self.bucket_name}")
         except ClientError as e:
-            print(f"Error downloading from S3: {str(e)}")
+            logger.error(f"Error downloading from S3: {str(e)}")
+            raise
 
     def list_objects(self, prefix: str = ''):
-        """
-        List objects in the S3 bucket.
-
-        Args:
-            prefix (str, optional): Only list objects beginning with the specified prefix.
-
-        Returns:
-            list: List of object keys in the bucket.
-        """
         try:
             response = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)
-            return [obj['Key'] for obj in response.get('Contents', [])]
+            objects = [obj['Key'] for obj in response.get('Contents', [])]
+            logger.debug(f"Objects in bucket {self.bucket_name}: {objects}")
+            return objects
         except ClientError as e:
-            print(f"Error listing objects in S3: {str(e)}")
+            logger.error(f"Error listing objects in S3: {str(e)}")
             return []
+
 
     def delete_object(self, object_name: str):
         """
@@ -104,7 +101,12 @@ class S3Utils:
         Args:
             model_dir (str): Directory containing model artifacts.
         """
-        artifacts = ['best_model.joblib', 'feature_preprocessor.joblib', 'target_preprocessor.joblib', 'model_comparison.png']
+        artifacts = [
+            "best_model.joblib",
+            "feature_preprocessor.joblib",
+            "target_preprocessor.joblib",
+            "model_comparison.png",
+        ]
         for artifact in artifacts:
             file_path = os.path.join(model_dir, artifact)
             if os.path.exists(file_path):
@@ -125,3 +127,17 @@ class S3Utils:
             print(f"Uploaded performance plot to S3: {object_name}")
         except Exception as e:
             print(f"Error uploading performance plot to S3: {str(e)}")
+
+    def load_model_artifacts(self, model_dir: str):
+        artifacts = [
+            "best_model.joblib",
+            "feature_preprocessor.joblib",
+            "target_preprocessor.joblib",
+            "model_comparison.png",
+        ]
+        for artifact in artifacts:
+            file_path = os.path.join(model_dir, artifact)
+            try:
+                self.download_file(artifact, file_path)
+            except ClientError:
+                print(f"Warning: {artifact} not found in S3 bucket {self.bucket_name}")

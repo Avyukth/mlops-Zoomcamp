@@ -8,13 +8,14 @@ sys.path.append(str(project_root))
 import logging
 from io import BytesIO
 
-from config import Config, S3Utils
 import boto3
 import joblib
 import pandas as pd
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+from config import Config, S3Utils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,37 +29,26 @@ app = FastAPI()
 
 
 # Function to load model or preprocessor from S3
-def load_from_s3(bucket, key):
-    try:
-        response = s3_utils.get_object(Bucket=bucket, Key=key)
-        body = response["Body"].read()
-        return joblib.load(BytesIO(body))
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
-            logger.error(f"The file {key} does not exist in the bucket {bucket}")
-            raise FileNotFoundError(f"The file {key} does not exist in the S3 bucket")
-        else:
-            logger.error(f"An error occurred while fetching {key} from S3: {str(e)}")
-            raise
-
-
-# Load model and preprocessor from S3
 try:
+    logger.info("Listing objects in S3 bucket...")
+    objects = s3_utils.list_objects()
+    logger.info(f"Objects in bucket: {objects}")
+
     logger.info("Loading model from S3...")
-    model = load_from_s3(config["s3"]["bucket_name"], "best_model.joblib")
+    model_path = Path(config.PATHS['model_dir']) / "best_model.joblib"
+    s3_utils.download_file("best_model.joblib", str(model_path))
+    model = joblib.load(model_path)
     logger.info("Model loaded successfully")
 
     logger.info("Loading feature preprocessor from S3...")
-    feature_preprocessor = load_from_s3(
-        config["s3"]["bucket_name"], "feature_preprocessor.joblib"
-    )
+    preprocessor_path = Path(config.PATHS['model_dir']) / "feature_preprocessor.joblib"
+    s3_utils.download_file("feature_preprocessor.joblib", str(preprocessor_path))
+    feature_preprocessor = joblib.load(preprocessor_path)
     logger.info("Feature preprocessor loaded successfully")
-except FileNotFoundError as e:
-    logger.error(f"File not found in S3: {str(e)}")
-    raise
 except Exception as e:
-    logger.error(f"An unexpected error occurred: {str(e)}")
+    logger.exception(f"An error occurred while loading model or preprocessor: {str(e)}")
     raise
+
 
 
 class HeartDiseaseInput(BaseModel):

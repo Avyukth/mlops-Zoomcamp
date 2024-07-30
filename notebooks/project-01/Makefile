@@ -4,9 +4,13 @@
 up:
 	docker compose up -d
 
-# Remove all Docker images
+# Remove all Docker images, but only if there are any images
 rmi:
-	docker rmi -f $(docker images -aq)
+	@if [ -n "$$(docker images -aq)" ]; then \
+		docker rmi -f $$(docker images -aq); \
+	else \
+		echo "No images to remove"; \
+	fi
 
 # Stop and remove Docker Compose services
 down:

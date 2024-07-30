@@ -23,6 +23,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - heart-disease-network
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -37,6 +39,8 @@ services:
 
     ports:
       - "${ADMINER_PORT:-8080}:8080"
+    networks:
+      - heart-disease-network
     depends_on:
       - db
 
@@ -45,6 +49,8 @@ services:
     image: grafana/grafana-enterprise:${GRAFANA_VERSION:-latest}
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
+    networks:
+      - heart-disease-network
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana-config:/etc/grafana/provisioning
@@ -57,6 +63,8 @@ services:
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    networks:
+      - heart-disease-network
     volumes:
       - minio_data:/data
     environment:
@@ -77,6 +85,8 @@ services:
     image: ${DOCKER_REGISTRY:-localhost}/heart-disease-mlflow:${IMAGE_TAG:-latest}
     ports:
       - "${MLFLOW_PORT:-6060}:6060"
+    networks:
+      - heart-disease-network
     volumes:
       - ./mlruns:/mlflow/mlruns
       - ./mlflow_data:/data
@@ -94,6 +104,8 @@ services:
       dockerfile: ./docker/Dockerfile.train
     container_name: heart-disease-train
     image: ${DOCKER_REGISTRY:-localhost}/heart-disease-train:${IMAGE_TAG:-latest}
+    networks:
+      - heart-disease-network
     volumes:
       - ./models:/app/models
       - ./mlflow_data:/data
@@ -119,6 +131,8 @@ services:
     image: ${DOCKER_REGISTRY:-localhost}/heart-disease-api:${IMAGE_TAG:-latest}
     ports:
       - "${API_PORT:-8000}:8000"
+    networks:
+      - heart-disease-network
     volumes:
       - ./models:/app/models
       - ./config.toml:/app/config.toml:ro
@@ -147,6 +161,8 @@ services:
     image: ${DOCKER_REGISTRY:-localhost}/heart-disease-streamlit:${IMAGE_TAG:-latest}
     ports:
       - "${STREAMLIT_PORT:-8501}:8501"
+    networks:
+      - heart-disease-network
     volumes:
       - ./config.toml:/app/config.toml:ro
     environment:
