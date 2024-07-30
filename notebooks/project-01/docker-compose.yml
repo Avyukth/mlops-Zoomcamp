@@ -72,6 +72,7 @@ services:
 
   mlflow:
     container_name: heart-disease-mlflow
+    image: ${DOCKER_REGISTRY:-localhost}/heart-disease-mlflow:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./docker/Dockerfile.mlflow

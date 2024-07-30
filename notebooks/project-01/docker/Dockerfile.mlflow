@@ -10,7 +10,7 @@ RUN mkdir -p /mlflow/mlflow_data /mlflow/mlruns && \
 
 WORKDIR /mlflow
 
-COPY docker/mlflow.sh /mlflow.sh
+COPY mlflow.sh /mlflow.sh
 RUN chmod +x /mlflow.sh
 
 USER mlflow
