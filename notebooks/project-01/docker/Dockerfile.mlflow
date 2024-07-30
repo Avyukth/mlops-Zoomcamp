@@ -1,25 +1,23 @@
 FROM ghcr.io/mlflow/mlflow:latest
-
 USER root
 
 RUN apt-get update && apt-get install -y curl sqlite3 && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 mlflow
 
-RUN mkdir -p /mlflow/mlruns /data && \
-    chown -R mlflow:mlflow /mlflow /data && \
-    chmod 777 /mlflow /data
+RUN mkdir -p /mlflow/mlflow_data /mlflow/mlruns && \
+    chown -R mlflow:mlflow /mlflow
+
+WORKDIR /mlflow
+
+COPY docker/mlflow.sh /mlflow.sh
+RUN chmod +x /mlflow.sh
 
 USER mlflow
 
-RUN echo '#!/bin/bash\n\
-    mlflow db upgrade sqlite:////data/mlflow.db\n\
-    mlflow server \
-    --host 0.0.0.0 \
-    --port 6060 \
-    --backend-store-uri sqlite:////data/mlflow.db \
-    --default-artifact-root /mlflow/mlruns \
-    "$@"' > /mlflow/start.sh && \
-    chmod +x /mlflow/start.sh
+ENTRYPOINT ["/mlflow.sh"]
 
 EXPOSE 6060
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=5 \
+    CMD curl -f http://localhost:6060/health || exit 1
