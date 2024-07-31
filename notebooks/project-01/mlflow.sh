@@ -11,7 +11,7 @@ mkdir -p "$(dirname "$MLFLOW_TRACKING_URI" | sed 's|sqlite:///||')"
 chmod 777 "$(dirname "$MLFLOW_TRACKING_URI" | sed 's|sqlite:///||')"
 
 exec mlflow server \
-  --backend-store-uri "$MLFLOW_TRACKING_URI" \
-  --default-artifact-root "$MLFLOW_DEFAULT_ARTIFACT_ROOT" \
-  --host 0.0.0.0 \
-  --port 6060
+	--backend-store-uri "$MLFLOW_TRACKING_URI" \
+	--default-artifact-root "$MLFLOW_DEFAULT_ARTIFACT_ROOT" \
+	--host 0.0.0.0 \
+	--port 6060

@@ -2,85 +2,41 @@ import sys
 from pathlib import Path
 
 # Add the project root to the Python path
-project_root = Path(__file__).resolve().parent
-sys.path.append(str(project_root))
-
-import logging
-from io import BytesIO
-import pickle
-
-import boto3
-import joblib
-import pandas as pd
-from botocore.exceptions import ClientError
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
-from config import Config, S3Utils
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-config = Config()
-print(config)
-s3_utils = S3Utils(config)
-app = FastAPI()
-
-
-# Load configuration
-
-
-# Function to load model or preprocessor from S3
-import sys
-from pathlib import Path
-
-# Add the project root to the Python path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 import logging
-import joblib
+import pickle
+from io import BytesIO
+
 import pandas as pd
+from config import Config
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-
-from config import Config, S3Utils
+from utils.s3_utils import S3Utils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 config = Config()
-print(config)
 s3_utils = S3Utils(config)
 app = FastAPI()
 
-
-
+# Load model and preprocessor
 try:
-    logger.info("Listing objects in S3 bucket...")
-    objects = s3_utils.list_objects()
-    logger.info(f"Objects in bucket: {objects}")
-
-    logger.info("Loading model from S3...")
-    model_path = Path(config.PATHS['model_dir']) / "best_model.joblib"
+    logger.info("Loading model and preprocessor from S3...")
+    model_path = Path(config.PATHS["model_dir"]) / "best_model.joblib"
+    preprocessor_path = Path(config.PATHS["model_dir"]) / "feature_preprocessor.joblib"
 
     s3_utils.download_file("best_model.joblib", str(model_path))
-    print("model_path.............", model_path)
-    
-    # Load the model using a custom unpickler
-    class CustomUnpickler(pickle.Unpickler):
-        def find_class(self, module, name):
-            if module == 'src.models.base_model':
-                return getattr(__import__('models.base_model', fromlist=['BaseModel']), name)
-            return super().find_class(module, name)
-
-    with open(model_path, 'rb') as f:
-        model = CustomUnpickler(f).load()
-    logger.info("Model loaded successfully")
-
-    logger.info("Loading feature preprocessor from S3...")
-    preprocessor_path = Path(config.PATHS['model_dir']) / "feature_preprocessor.joblib"
     s3_utils.download_file("feature_preprocessor.joblib", str(preprocessor_path))
-    feature_preprocessor = joblib.load(preprocessor_path)
-    logger.info("Feature preprocessor loaded successfully")
+
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    with open(preprocessor_path, "rb") as f:
+        feature_preprocessor = pickle.load(f)
+
+    logger.info("Model and preprocessor loaded successfully")
 except Exception as e:
     logger.exception(f"An error occurred while loading model or preprocessor: {str(e)}")
     raise
@@ -124,22 +80,14 @@ class HeartDiseaseInput(BaseModel):
 @app.post("/predict")
 async def predict_heart_disease(input: HeartDiseaseInput):
     try:
-        # Convert input to DataFrame
-        input_dict = input.dict()
-        input_df = pd.DataFrame([input_dict])
-
-        # Preprocess the input
+        input_df = pd.DataFrame([input.dict()])
         X_processed = feature_preprocessor.transform(input_df)
-
-        # Make prediction
         prediction = model.predict(X_processed)
-        logger.info(f"Prediction: {prediction}")
-        # Get probability if the model supports it
-        if hasattr(model, "predict_proba"):
-            probability = model.predict_proba(X_processed)[:, 1]
-            logger.info(f"Probability: {probability[0]}")
-        else:
-            probability = None
+        probability = (
+            model.predict_proba(X_processed)[:, 1]
+            if hasattr(model, "predict_proba")
+            else None
+        )
 
         result = {"prediction": int(prediction[0])}
         if probability is not None:
@@ -153,16 +101,9 @@ async def predict_heart_disease(input: HeartDiseaseInput):
 
 @app.get("/health")
 async def health_check():
-    try:
-        # Check if model and preprocessor are loaded
-        if model is not None and feature_preprocessor is not None:
-            return {"status": "healthy", "message": "Model and preprocessor are loaded"}
-        else:
-            raise HTTPException(
-                status_code=503, detail="Model or preprocessor not loaded"
-            )
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
+    if model is not None and feature_preprocessor is not None:
+        return {"status": "healthy", "message": "Model and preprocessor are loaded"}
+    raise HTTPException(status_code=503, detail="Model or preprocessor not loaded")
 
 
 if __name__ == "__main__":

@@ -134,6 +134,8 @@ services:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./models:/app/models
+      - ./config:/app/config
+      - ./api:/app/api
       - ./config.toml:/app/config.toml:ro
     environment:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
@@ -151,7 +153,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
 
   streamlit:
     build:

@@ -26,7 +26,6 @@ class S3Utils:
             aws_access_key_id=config["S3_ACCESS_KEY_ID"],
             aws_secret_access_key=config["S3_SECRET_ACCESS_KEY"],
             region_name=config["S3_REGION_NAME"],
-
         )
 
     def create_bucket(self):
@@ -70,16 +69,17 @@ class S3Utils:
             logger.error(f"Error downloading from S3: {str(e)}")
             raise
 
-    def list_objects(self, prefix: str = ''):
+    def list_objects(self, prefix: str = ""):
         try:
-            response = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)
-            objects = [obj['Key'] for obj in response.get('Contents', [])]
+            response = self.client.list_objects_v2(
+                Bucket=self.bucket_name, Prefix=prefix
+            )
+            objects = [obj["Key"] for obj in response.get("Contents", [])]
             logger.debug(f"Objects in bucket {self.bucket_name}: {objects}")
             return objects
         except ClientError as e:
             logger.error(f"Error listing objects in S3: {str(e)}")
             return []
-
 
     def delete_object(self, object_name: str):
         """
