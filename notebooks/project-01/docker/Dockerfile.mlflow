@@ -1,19 +1,16 @@
 FROM ghcr.io/mlflow/mlflow:latest
+
 USER root
 
 RUN apt-get update && apt-get install -y curl sqlite3 && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -u 1000 mlflow
-
 RUN mkdir -p /mlflow/mlflow_data /mlflow/mlruns && \
-    chown -R mlflow:mlflow /mlflow
+    chmod -R 777 /mlflow
 
 WORKDIR /mlflow
 
 COPY mlflow.sh /mlflow.sh
 RUN chmod +x /mlflow.sh
-
-USER mlflow
 
 ENTRYPOINT ["/mlflow.sh"]
 

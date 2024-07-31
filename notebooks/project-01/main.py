@@ -37,6 +37,7 @@ def run_experiment():
         report_path, test_suite_path = evidently_reporter.generate_reports(
             x_train, y_train, x_test, y_test
         )
+        print("report_path, test_suite_path" ,report_path, test_suite_path, )
         mlflow_utils.log_artifact(report_path, "evidently_reports")
         mlflow_utils.log_artifact(test_suite_path, "evidently_reports")
 
