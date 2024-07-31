@@ -7,6 +7,7 @@ sys.path.append(str(project_root))
 
 import logging
 from io import BytesIO
+import pickle
 
 import boto3
 import joblib
@@ -29,6 +30,30 @@ app = FastAPI()
 
 
 # Function to load model or preprocessor from S3
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
+import logging
+import joblib
+import pandas as pd
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+from config import Config, S3Utils
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+config = Config()
+print(config)
+s3_utils = S3Utils(config)
+app = FastAPI()
+
+
+
 try:
     logger.info("Listing objects in S3 bucket...")
     objects = s3_utils.list_objects()
@@ -36,8 +61,19 @@ try:
 
     logger.info("Loading model from S3...")
     model_path = Path(config.PATHS['model_dir']) / "best_model.joblib"
+
     s3_utils.download_file("best_model.joblib", str(model_path))
-    model = joblib.load(model_path)
+    print("model_path.............", model_path)
+    
+    # Load the model using a custom unpickler
+    class CustomUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            if module == 'src.models.base_model':
+                return getattr(__import__('models.base_model', fromlist=['BaseModel']), name)
+            return super().find_class(module, name)
+
+    with open(model_path, 'rb') as f:
+        model = CustomUnpickler(f).load()
     logger.info("Model loaded successfully")
 
     logger.info("Loading feature preprocessor from S3...")
@@ -48,7 +84,6 @@ try:
 except Exception as e:
     logger.exception(f"An error occurred while loading model or preprocessor: {str(e)}")
     raise
-
 
 
 class HeartDiseaseInput(BaseModel):
